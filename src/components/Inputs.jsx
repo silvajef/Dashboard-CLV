@@ -112,7 +112,12 @@ export function SelectFipe({ label, value, onChange, options, placeholder, loadi
       <div style={{ position:'relative' }}>
         <select
           value={value || ''}
-          onChange={e => onChange(e.target.value)}
+          onChange={e => {
+            const codigo = e.target.value
+            // Passa também o nome junto com o código
+            const nome = e.target.options[e.target.selectedIndex]?.text || ''
+            onChange(codigo, nome)
+          }}
           disabled={disabled || loading}
           style={{
             ...baseStyle,
@@ -132,7 +137,6 @@ export function SelectFipe({ label, value, onChange, options, placeholder, loadi
             <option key={o.codigo} value={o.codigo}>{o.nome}</option>
           ))}
         </select>
-        {/* Seta customizada */}
         <span style={{
           position:'absolute', right:12, top:'50%', transform:'translateY(-50%)',
           color: C.muted, fontSize:10, pointerEvents:'none'
