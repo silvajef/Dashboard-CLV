@@ -1,81 +1,93 @@
 /**
- * Hook: useFipe
- * Gerencia o fluxo cascata: marca → modelo → ano → preço
- * Usado dentro do ModalVeiculo para busca FIPE integrada
+ * useFipe — hook de consulta FIPE em cascata
+ * Tipo → Marcas → Modelos → Anos → Preço
  */
 import { useState, useEffect, useCallback } from 'react'
-import { getMarcas, getModelos, getAnos, getPreco, tipoFipe } from '../lib/fipe'
+
+const BASE = import.meta.env.DEV
+  ? '/fipe/api/v1'
+  : 'https://parallelum.com.br/fipe/api/v1'
+
+const _cache = new Map()
+async function get(path) {
+  if (_cache.has(path)) return _cache.get(path)
+  const res = await fetch(`${BASE}${path}`)
+  if (!res.ok) throw new Error(`FIPE ${res.status}`)
+  const data = await res.json()
+  _cache.set(path, data)
+  return data
+}
+
+export function tipoFipeEndpoint(tipo = '') {
+  const t = tipo.toLowerCase()
+  if (t.includes('caminhão') || t.includes('caminhao')) return 'caminhoes'
+  return 'carros'
+}
+
+// Extrai valor numérico de "R$ 85.000,00"
+export function parseFipeValor(str = '') {
+  if (!str) return 0
+  return parseFloat(str.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0
+}
 
 export function useFipe(tipoVeiculo) {
-  const [marcas,      setMarcas]      = useState([])
-  const [modelos,     setModelos]     = useState([])
-  const [anos,        setAnos]        = useState([])
-  const [resultado,   setResultado]   = useState(null)
+  const [marcas,  setMarcas]  = useState([])
+  const [modelos, setModelos] = useState([])
+  const [anos,    setAnos]    = useState([])
+  const [preco,   setPreco]   = useState(null)
+  const [sels,    setSels]    = useState({ marca:'', modelo:'', ano:'' })
+  const [loading, setLoading] = useState('')
+  const [erro,    setErro]    = useState(null)
 
-  const [marcaSel,    setMarcaSel]    = useState('')
-  const [modeloSel,   setModeloSel]   = useState('')
-  const [anoSel,      setAnoSel]      = useState('')
+  const ep = tipoFipeEndpoint(tipoVeiculo)
 
-  const [loading,     setLoading]     = useState(false)
-  const [erro,        setErro]        = useState(null)
-  const [etapa,       setEtapa]       = useState('marca') // marca|modelo|ano|preco
-
-  // Reset quando tipo muda
   useEffect(() => {
-    setMarcas([]); setModelos([]); setAnos([]); setResultado(null)
-    setMarcaSel(''); setModeloSel(''); setAnoSel('')
-    setEtapa('marca'); setErro(null)
     if (!tipoVeiculo) return
-    setLoading(true)
-    getMarcas(tipoVeiculo)
-      .then(setMarcas)
-      .catch(e => setErro(e.message))
-      .finally(() => setLoading(false))
-  }, [tipoVeiculo])
+    setMarcas([]); setModelos([]); setAnos([]); setPreco(null)
+    setSels({ marca:'', modelo:'', ano:'' }); setErro(null)
+    setLoading('marcas')
+    get(`/${ep}/marcas`)
+      .then(setMarcas).catch(e => setErro(e.message)).finally(() => setLoading(''))
+  }, [ep])
 
   const selecionarMarca = useCallback(async (codigo) => {
-    setMarcaSel(codigo); setModelos([]); setAnos([]); setResultado(null)
-    setModeloSel(''); setAnoSel(''); setEtapa('modelo'); setErro(null)
+    setSels({ marca:codigo, modelo:'', ano:'' })
+    setModelos([]); setAnos([]); setPreco(null); setErro(null)
+    if (!codigo) return
+    setLoading('modelos')
     try {
-      setLoading(true)
-      const m = await getModelos(tipoVeiculo, codigo)
-      setModelos(m)
-    } catch(e) { setErro(e.message) }
-    finally { setLoading(false) }
-  }, [tipoVeiculo])
+      const raw = await get(`/${ep}/marcas/${codigo}/modelos`)
+      setModelos(raw.modelos ?? raw)
+    } catch(e) { setErro(e.message) } finally { setLoading('') }
+  }, [ep])
 
-  const selecionarModelo = useCallback(async (codigo) => {
-    setModeloSel(codigo); setAnos([]); setResultado(null)
-    setAnoSel(''); setEtapa('ano'); setErro(null)
+  const selecionarModelo = useCallback(async (codigo, marcaCodigo) => {
+    setSels(p => ({ ...p, modelo:codigo, ano:'' }))
+    setAnos([]); setPreco(null); setErro(null)
+    if (!codigo) return
+    setLoading('anos')
     try {
-      setLoading(true)
-      const a = await getAnos(tipoVeiculo, marcaSel, codigo)
+      const a = await get(`/${ep}/marcas/${marcaCodigo}/modelos/${codigo}/anos`)
       setAnos(a)
-    } catch(e) { setErro(e.message) }
-    finally { setLoading(false) }
-  }, [tipoVeiculo, marcaSel])
+    } catch(e) { setErro(e.message) } finally { setLoading('') }
+  }, [ep])
 
-  const selecionarAno = useCallback(async (codigo) => {
-    setAnoSel(codigo); setResultado(null); setEtapa('preco'); setErro(null)
+  const selecionarAno = useCallback(async (codigo, marcaCodigo, modeloCodigo) => {
+    setSels(p => ({ ...p, ano:codigo }))
+    setPreco(null); setErro(null)
+    if (!codigo) return
+    setLoading('preco')
     try {
-      setLoading(true)
-      const p = await getPreco(tipoVeiculo, marcaSel, modeloSel, codigo)
-      setResultado(p)
-    } catch(e) { setErro(e.message) }
-    finally { setLoading(false) }
-  }, [tipoVeiculo, marcaSel, modeloSel])
+      const p = await get(`/${ep}/marcas/${marcaCodigo}/modelos/${modeloCodigo}/anos/${codigo}`)
+      setPreco(p)
+    } catch(e) { setErro(e.message) } finally { setLoading('') }
+  }, [ep])
 
   const reset = () => {
-    setMarcaSel(''); setModeloSel(''); setAnoSel('')
-    setModelos([]); setAnos([]); setResultado(null)
-    setEtapa('marca'); setErro(null)
+    setModelos([]); setAnos([]); setPreco(null)
+    setSels({ marca:'', modelo:'', ano:'' }); setErro(null)
   }
 
-  return {
-    marcas, modelos, anos, resultado,
-    marcaSel, modeloSel, anoSel,
-    loading, erro, etapa,
-    selecionarMarca, selecionarModelo, selecionarAno, reset,
-    tipo: tipoFipe(tipoVeiculo),
-  }
+  return { marcas, modelos, anos, preco, sels, loading, erro,
+           selecionarMarca, selecionarModelo, selecionarAno, reset }
 }
