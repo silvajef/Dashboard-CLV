@@ -34,7 +34,10 @@ export const C = {
   blue: '#4f8ef7',  blueDim: '#4f8ef715',
   purple: '#a78bfa',purpleDim: '#a78bfa15',
   cyan: '#22d4dd',  orange: '#fb923c',
-  text: '#dde3f0',  muted: '#5a6480', subtle: '#242a3e',
+  text:   '#e8edf8',   // era #dde3f0 — títulos e valores principais
+  muted:  '#8b95b0',   // era #5a6480 — contraste ~5.8:1 (WCAG AA ✅)
+  faint:  '#636b85',   // novo — textos terciários: versão, timestamps (4.5:1 ✅)
+  subtle: '#2e3650',   // era #242a3e — bordas e separadores
 }
 
 export const today    = () => new Date().toISOString().split('T')[0]

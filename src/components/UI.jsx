@@ -4,7 +4,7 @@ import { useBreakpoint } from '../lib/responsive'
 export function Badge({ status, cfg }) {
   const c = cfg[status] || { label: status, color: C.muted }
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:c.color+'22', color:c.color, border:`1px solid ${c.color}44`, whiteSpace:'nowrap', fontFamily:'inherit' }}>
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:700, background:c.color+'22', color:c.color, border:`1px solid ${c.color}44`, whiteSpace:'nowrap', fontFamily:'inherit' }}>
       {c.icon && <span>{c.icon}</span>}{c.label}
     </span>
   )
@@ -29,8 +29,8 @@ export function KPI({ label, value, icon, color, sub }) {
       <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:color }} />
       <div style={{ fontSize:20, marginBottom:2 }}>{icon}</div>
       <div style={{ fontSize:22, fontWeight:800, color, fontFamily:"'JetBrains Mono',monospace", letterSpacing:-1 }}>{value}</div>
-      <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>{label}</div>
-      {sub && <div style={{ fontSize:11, color:C.muted, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:6 }}>{sub}</div>}
+      <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>{label}</div>
+      {sub && <div style={{ fontSize:12, color:C.muted, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:6 }}>{sub}</div>}
     </div>
   )
 }
@@ -38,7 +38,7 @@ export function KPI({ label, value, icon, color, sub }) {
 export function Btn({ children, onClick, variant='primary', small, disabled, style, full }) {
   const v = {
     primary:   { background:C.amber,       color:'#000', border:'none' },
-    secondary: { background:'transparent', color:C.muted, border:`1px solid ${C.border}` },
+    secondary: { background:'transparent', color:C.text,  border:`1px solid ${C.border}` },
     danger:    { background:C.redDim,      color:C.red,   border:`1px solid ${C.red}44` },
     success:   { background:C.greenDim,    color:C.green, border:`1px solid ${C.green}44` },
     ghost:     { background:'transparent', color:C.text,  border:`1px solid ${C.border}` },
@@ -60,7 +60,7 @@ export function Input({ label, value, onChange, type='text', placeholder, requir
   const base = { background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:5, ...style }}>
-      {label && <label style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5 }}>{label}{required && <span style={{ color:C.red }}> *</span>}</label>}
+      {label && <label style={{ fontSize:12, color:C.muted, fontWeight:700, letterSpacing:0.5 }}>{label}{required && <span style={{ color:C.red }}> *</span>}</label>}
       {options
         ? <select value={value||''} onChange={e=>onChange(e.target.value)} style={base} disabled={readOnly}><option value=''>Selecione...</option>{options.map(o=><option key={o.value??o} value={o.value??o}>{o.label??o}</option>)}</select>
         : rows
@@ -99,8 +99,8 @@ export function SectionHead({ title, subtitle, action }) {
   return (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:20, gap:10, flexWrap:'wrap' }}>
       <div>
-        <div style={{ fontSize:16, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>{title}</div>
-        {subtitle && <div style={{ fontSize:12, color:C.muted, marginTop:3 }}>{subtitle}</div>}
+        <div style={{ fontSize:18, fontWeight:800, color:C.text, letterSpacing:-0.3 }}>{title}</div>
+        {subtitle && <div style={{ fontSize:13, color:C.muted, marginTop:4 }}>{subtitle}</div>}
       </div>
       {action}
     </div>
@@ -117,7 +117,7 @@ export function Tabs({ tabs, active, onChange }) {
           color: active===t.id ? C.amber : C.muted,
           border: active===t.id ? `1px solid ${C.border}` : '1px solid transparent',
           borderRadius:7, padding: isMobile ? '7px 12px' : '7px 16px',
-          fontSize:12, fontWeight: active===t.id ? 700 : 400, cursor:'pointer',
+          fontSize:13, fontWeight: active===t.id ? 700 : 500, cursor:'pointer',
           display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap',
           transition:'all 0.15s', fontFamily:'inherit', flexShrink:0,
         }}>
