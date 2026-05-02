@@ -7,12 +7,4 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('⚠️  Supabase env vars missing. Check your .env file.')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: true,
-    storageKey: 'clv-auth-v2',  // mudou de 'clv-auth' para 'clv-auth-v2'
-    storage: window.localStorage,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  }
-})
+export const supabase = createClient(supabaseUrl, supabaseKey)
