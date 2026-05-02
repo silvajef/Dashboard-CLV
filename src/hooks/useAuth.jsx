@@ -7,10 +7,8 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-// Chave padrão do Supabase para salvar sessão no localStorage
-const SUPABASE_STORAGE_KEY = `sb-${
-  import.meta.env.VITE_SUPABASE_URL?.split('//')?.[1]?.split('.')?.[0]
-}-auth-token`
+// Chave exata que o Supabase usa no localStorage deste projeto
+const SUPABASE_STORAGE_KEY = 'sb-kicsrbhzgfhullgacszb-auth-token'
 
 function tokenEstaExpirado() {
   try {
@@ -18,7 +16,7 @@ function tokenEstaExpirado() {
     if (!raw) return false // sem token salvo — sem problema
     const parsed = JSON.parse(raw)
     const expiresAt = parsed?.expires_at
-    if (!expiresAt) return true // sem data de expiração = inválido
+    if (!expiresAt) return true
     // Expira se o tempo atual >= expires_at (com 60s de margem)
     return (Date.now() / 1000) >= (expiresAt - 60)
   } catch {
