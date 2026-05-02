@@ -7,6 +7,8 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 const SUPABASE_STORAGE_KEY = 'sb-kicsrbhzgfhullgacszb-auth-token'
 
 function lerSessaoDoStorage() {
@@ -22,12 +24,7 @@ function lerSessaoDoStorage() {
       return null
     }
 
-    return {
-      access_token: parsed.access_token,
-      refresh_token: parsed.refresh_token,
-      expires_at: expiresAt,
-      user: parsed.user,
-    }
+    return parsed
   } catch {
     return null
   }
@@ -39,24 +36,34 @@ function limparToken() {
   localStorage.removeItem('clv-auth-v2')
 }
 
+/**
+ * Carrega o perfil via fetch direto na REST API.
+ * Não usa o cliente Supabase porque ele trava em cold start.
+ */
+async function carregarPerfilViaFetch(userId, accessToken) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+      }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.[0] || null
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined)
   const [perfil,  setPerfil]  = useState(null)
   const [loading, setLoading] = useState(true)
-
-  async function carregarPerfil(userId) {
-    if (!userId) { setPerfil(null); return }
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      setPerfil(data || null)
-    } catch {
-      setPerfil(null)
-    }
-  }
 
   useEffect(() => {
     localStorage.removeItem('clv-auth')
@@ -72,26 +79,30 @@ export function AuthProvider({ children }) {
         return
       }
 
-      // Injeta a sessão no cliente Supabase para autenticar as queries
-      // setSession é diferente de getSession — não trava em cold start
-      try {
-        await supabase.auth.setSession({
-          access_token: sessaoSalva.access_token,
-          refresh_token: sessaoSalva.refresh_token,
-        })
-      } catch {
-        // Se setSession falhar, limpa e vai para login
+      // Carrega perfil via fetch direto (não usa cliente Supabase)
+      const perfilCarregado = await carregarPerfilViaFetch(
+        sessaoSalva.user.id,
+        sessaoSalva.access_token
+      )
+
+      if (!perfilCarregado) {
+        // Token rejeitado pelo servidor — limpa e vai para login
         limparToken()
         setSession(null)
         setLoading(false)
         return
       }
 
-      setSession(sessaoSalva)
-      setLoading(false)
+      // Sucesso — injeta sessão no cliente Supabase em background
+      // Não aguardamos para não travar a UI
+      supabase.auth.setSession({
+        access_token: sessaoSalva.access_token,
+        refresh_token: sessaoSalva.refresh_token,
+      }).catch(() => {})
 
-      // Carrega perfil agora que o cliente está autenticado
-      await carregarPerfil(sessaoSalva.user.id)
+      setSession(sessaoSalva)
+      setPerfil(perfilCarregado)
+      setLoading(false)
     }
 
     iniciar()
@@ -100,7 +111,10 @@ export function AuthProvider({ children }) {
       async (event, session) => {
         if (event === 'SIGNED_IN') {
           setSession(session)
-          if (session?.user?.id) await carregarPerfil(session.user.id)
+          if (session?.user?.id) {
+            const p = await carregarPerfilViaFetch(session.user.id, session.access_token)
+            setPerfil(p)
+          }
           setLoading(false)
           return
         }
@@ -132,7 +146,12 @@ export function AuthProvider({ children }) {
     session, perfil, role,
     isAdmin, isOperador, podeEditar,
     loading, signOut,
-    recarregarPerfil: () => carregarPerfil(session?.user?.id),
+    recarregarPerfil: async () => {
+      if (session?.user?.id) {
+        const p = await carregarPerfilViaFetch(session.user.id, session.access_token)
+        setPerfil(p)
+      }
+    },
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
