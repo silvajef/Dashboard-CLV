@@ -23,9 +23,19 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // Timeout de segurança — se demorar mais de 5s, libera a tela
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 5000)
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout)
       setSession(session)
       await carregarPerfil(session?.user?.id)
+      setLoading(false)
+    }).catch(() => {
+      clearTimeout(timeout)
+      setSession(null)
       setLoading(false)
     })
 
@@ -37,12 +47,17 @@ export function AuthProvider({ children }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function signOut() {
     await supabase.auth.signOut()
     setPerfil(null)
+    // Limpa o storage para evitar tokens corrompidos
+    localStorage.removeItem('clv-auth-v2')
   }
 
   const role       = perfil?.role || null
