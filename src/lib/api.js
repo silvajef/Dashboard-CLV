@@ -72,7 +72,7 @@ export async function deletePrestador(id) {
 
 /* ── METAS ─────────────────────────────────────────────────────── */
 export async function getMetas() {
-  const { data, error } = await supabase.from('metas').select('*').limit(1).single()
+  const { data, error } = await supabase.from('metas').select('*').limit(1).maybeSingle()
   if (error && error.code !== 'PGRST116') throw error
   return data || { vendas_mes:3, margem_min:8, dias_max_estoque:90, custo_max_pct:5 }
 }
