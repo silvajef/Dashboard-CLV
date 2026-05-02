@@ -8,26 +8,37 @@ export function useAuth() {
 }
 
 const SUPABASE_STORAGE_KEY = 'sb-kicsrbhzgfhullgacszb-auth-token'
-const log = (...args) => console.log('[AUTH]', ...args)
 
-function tokenEstaExpirado() {
+/**
+ * Lê o token direto do localStorage sem chamar getSession().
+ * Bug do supabase-js: getSession() trava em cold start de aba.
+ */
+function lerSessaoDoStorage() {
   try {
     const raw = localStorage.getItem(SUPABASE_STORAGE_KEY)
-    if (!raw) { log('token: ausente'); return false }
+    if (!raw) return null
+
     const parsed = JSON.parse(raw)
-    const expiresAt = parsed?.expires_at
-    if (!expiresAt) { log('token: sem expires_at'); return true }
-    const expirou = (Date.now() / 1000) >= (expiresAt - 60)
-    log('token expira em', new Date(expiresAt * 1000).toLocaleString(), '— expirou?', expirou)
-    return expirou
-  } catch (e) {
-    log('erro ao parsear token:', e.message)
-    return true
+    if (!parsed?.access_token || !parsed?.user) return null
+
+    // Verifica se ainda é válido
+    const expiresAt = parsed.expires_at
+    if (!expiresAt || (Date.now() / 1000) >= (expiresAt - 60)) {
+      return null // expirado
+    }
+
+    return {
+      access_token: parsed.access_token,
+      refresh_token: parsed.refresh_token,
+      expires_at: expiresAt,
+      user: parsed.user,
+    }
+  } catch {
+    return null
   }
 }
 
 function limparToken() {
-  log('limpando tokens')
   localStorage.removeItem(SUPABASE_STORAGE_KEY)
   localStorage.removeItem('clv-auth')
   localStorage.removeItem('clv-auth-v2')
@@ -40,66 +51,41 @@ export function AuthProvider({ children }) {
 
   async function carregarPerfil(userId) {
     if (!userId) { setPerfil(null); return }
-    log('carregando perfil para', userId)
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
-      if (error) log('erro perfil:', error.message)
-      else log('perfil carregado:', data?.role)
       setPerfil(data || null)
-    } catch (e) {
-      log('exception perfil:', e.message)
+    } catch {
       setPerfil(null)
     }
   }
 
   useEffect(() => {
-    log('AuthProvider mount')
     localStorage.removeItem('clv-auth')
     localStorage.removeItem('clv-auth-v2')
 
-    async function iniciar() {
-      log('iniciar() executando')
+    // Lê sessão direto do localStorage — não chama getSession()
+    const sessaoSalva = lerSessaoDoStorage()
 
-      if (tokenEstaExpirado()) {
-        log('token expirado — indo para login')
-        limparToken()
-        await supabase.auth.signOut().catch(() => {})
-        setSession(null)
-        setLoading(false)
-        log('FIM iniciar() via expirado')
-        return
-      }
-
-      log('chamando getSession()...')
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        log('getSession() retornou. session?', !!session, 'error?', error?.message)
-        if (error || !session) {
-          limparToken()
-          setSession(null)
-        } else {
-          setSession(session)
-          await carregarPerfil(session.user.id)
-        }
-      } catch (e) {
-        log('getSession() throw:', e.message)
-        limparToken()
-        setSession(null)
-      } finally {
-        setLoading(false)
-        log('FIM iniciar() — loading=false')
-      }
+    if (!sessaoSalva) {
+      // Sem sessão válida — limpa qualquer resto e vai para login
+      limparToken()
+      setSession(null)
+      setLoading(false)
+    } else {
+      // Sessão válida encontrada — usa direto sem aguardar Supabase
+      setSession(sessaoSalva)
+      setLoading(false)
+      // Carrega perfil em background (não bloqueia a UI)
+      carregarPerfil(sessaoSalva.user.id)
     }
 
-    iniciar()
-
+    // Listener para mudanças (login, logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        log('onAuthStateChange:', event, 'session?', !!session)
         if (event === 'SIGNED_IN') {
           setSession(session)
           if (session?.user?.id) await carregarPerfil(session.user.id)
@@ -112,6 +98,7 @@ export function AuthProvider({ children }) {
           setLoading(false)
           return
         }
+        // Outros eventos (TOKEN_REFRESHED, INITIAL_SESSION) são ignorados
       }
     )
 
