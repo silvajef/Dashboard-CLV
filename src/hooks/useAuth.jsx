@@ -27,39 +27,40 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Remove chaves legadas de versões anteriores
+    // Remove chaves legadas
     localStorage.removeItem('clv-auth')
     localStorage.removeItem('clv-auth-v2')
 
-    async function iniciar() {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) {
-          await supabase.auth.signOut()
-          setSession(null)
-          setLoading(false)
-          return
-        }
-        setSession(session)
-        await carregarPerfil(session?.user?.id)
-      } catch {
-        setSession(null)
-      } finally {
-        setLoading(false)
-      }
-    }
+    // Timeout absoluto — libera em 3s independente do que aconteça
+    const timeout = setTimeout(() => {
+      setSession(prev => prev === undefined ? null : prev)
+      setLoading(false)
+    }, 3000)
 
-    iniciar()
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout)
+      setSession(session)
+      if (session?.user?.id) await carregarPerfil(session.user.id)
+      setLoading(false)
+    }).catch(() => {
+      clearTimeout(timeout)
+      setSession(null)
+      setLoading(false)
+    })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session)
-        await carregarPerfil(session?.user?.id)
+        if (session?.user?.id) await carregarPerfil(session.user.id)
+        else setPerfil(null)
         setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function signOut() {
