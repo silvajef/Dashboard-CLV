@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useFleetData } from './hooks/useFleetData'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
@@ -33,25 +33,31 @@ export default function App() {
   const [aba, setAba] = useState('dashboard')
   const { isMobile, isTablet } = useBreakpoint()
 
-  // 1. Auth ainda verificando → loading
+  // Auth ainda verificando → loading
   if (authLoading) return <LoadingScreen />
 
-  // 2. Sem sessão → Login (useFleetData não importa aqui)
+  // Sem sessão → Login
   if (!session) return <Login />
 
-  // 3. Autenticado — agora sim carrega os dados
-  return <AppAutenticado
-    session={session} perfil={perfil} role={role} signOut={signOut}
-    aba={aba} setAba={setAba}
-    isMobile={isMobile} isTablet={isTablet}
-  />
+  // Autenticado — monta AppAutenticado apenas uma vez
+  return (
+    <AppAutenticado
+      session={session} perfil={perfil} role={role} signOut={signOut}
+      aba={aba} setAba={setAba}
+      isMobile={isMobile} isTablet={isTablet}
+    />
+  )
 }
 
-// Componente separado para garantir que useFleetData só monta após auth
 function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile, isTablet }) {
   const fleet = useFleetData()
+  // Mantém referência se já carregou ao menos uma vez
+  // Evita que fleet.loading = true em refreshes posteriores mostre LoadingScreen
+  const jaCarregou = useRef(false)
+  if (!fleet.loading) jaCarregou.current = true
 
-  if (fleet.loading) return <LoadingScreen />
+  // Só mostra LoadingScreen na primeira carga — nunca depois
+  if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
 
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS] : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { supabase } from '../lib/supabase'
 
 export const AuthContext = createContext(null)
@@ -32,7 +32,6 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined)
   const [perfil,  setPerfil]  = useState(null)
   const [loading, setLoading] = useState(true)
-  const inicializado = useRef(false) // evita que onAuthStateChange interfira no loading inicial
 
   async function carregarPerfil(userId) {
     if (!userId) { setPerfil(null); return }
@@ -52,35 +51,13 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('clv-auth')
     localStorage.removeItem('clv-auth-v2')
 
-    // ── Listener de mudanças (login, logout, refresh de token) ──────────
-    // Só atua APÓS a inicialização estar completa
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!inicializado.current) return // ignora eventos durante inicialização
-
-        if (event === 'SIGNED_OUT') {
-          setSession(null)
-          setPerfil(null)
-          return
-        }
-
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setSession(session)
-          if (session?.user?.id) await carregarPerfil(session.user.id)
-          return
-        }
-      }
-    )
-
-    // ── Inicialização: verifica sessão uma única vez ──────────────────
     async function iniciar() {
-      // Token expirado — limpa e vai para login sem chamar getSession
+      // Token expirado — limpa e vai para login sem travar
       if (tokenEstaExpirado()) {
         limparToken()
         await supabase.auth.signOut().catch(() => {})
         setSession(null)
         setLoading(false)
-        inicializado.current = true
         return
       }
 
@@ -98,11 +75,30 @@ export function AuthProvider({ children }) {
         setSession(null)
       } finally {
         setLoading(false)
-        inicializado.current = true
       }
     }
 
     iniciar()
+
+    // Listener APENAS para SIGNED_IN e SIGNED_OUT
+    // TOKEN_REFRESHED é ignorado — não altera o estado de loading
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN') {
+          setSession(session)
+          if (session?.user?.id) await carregarPerfil(session.user.id)
+          setLoading(false)
+          return
+        }
+        if (event === 'SIGNED_OUT') {
+          setSession(null)
+          setPerfil(null)
+          setLoading(false)
+          return
+        }
+        // TOKEN_REFRESHED, INITIAL_SESSION, etc — ignora completamente
+      }
+    )
 
     return () => subscription.unsubscribe()
   }, [])
