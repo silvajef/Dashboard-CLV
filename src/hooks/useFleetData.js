@@ -36,28 +36,50 @@ export function useFleetData() {
   useEffect(() => {
     let channel = null
 
-    // Aguarda sessão ativa antes de fazer qualquer query
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return // App.jsx já redireciona para Login
+    // Timeout de segurança — libera loading em 5s se travar
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 5000)
 
-      loadAll()
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!session) {
+          // Sem sessão — App.jsx redireciona para Login
+          clearTimeout(timeout)
+          setLoading(false)
+          return
+        }
 
-      channel = supabase
-        .channel('fleet_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'veiculos' },   () => loadAll())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'servicos' },   () => loadAll())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'prestadores' },() => loadAll())
-        .subscribe()
-    })
+        // Com sessão — carrega dados e inicia Realtime
+        loadAll().then(() => clearTimeout(timeout))
 
-    // Recarrega quando a sessão muda (ex: refresh de token)
+        channel = supabase
+          .channel('fleet_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'veiculos' },    () => loadAll())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'servicos' },    () => loadAll())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'prestadores' }, () => loadAll())
+          .subscribe()
+      })
+      .catch(() => {
+        clearTimeout(timeout)
+        setLoading(false)
+      })
+
+    // Reage a mudanças de sessão
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         loadAll()
       }
+      if (event === 'SIGNED_OUT') {
+        setVeiculos([])
+        setPrestadores([])
+        setMetasState(null)
+        setLoading(false)
+      }
     })
 
     return () => {
+      clearTimeout(timeout)
       if (channel) supabase.removeChannel(channel)
       subscription.unsubscribe()
     }

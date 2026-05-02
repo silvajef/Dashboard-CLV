@@ -27,33 +27,47 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Remove chaves legadas
+    // Remove chaves legadas de versões anteriores
     localStorage.removeItem('clv-auth')
     localStorage.removeItem('clv-auth-v2')
 
-    // Timeout absoluto — libera em 3s independente do que aconteça
-    const timeout = setTimeout(() => {
-      setSession(prev => prev === undefined ? null : prev)
-      setLoading(false)
-    }, 3000)
+    let finalizado = false
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeout)
-      setSession(session)
-      if (session?.user?.id) await carregarPerfil(session.user.id)
+    function finalizar(sess) {
+      if (finalizado) return
+      finalizado = true
+      setSession(sess)
       setLoading(false)
-    }).catch(() => {
-      clearTimeout(timeout)
-      setSession(null)
-      setLoading(false)
-    })
+    }
+
+    // Timeout absoluto — libera em 4s independente do que aconteça
+    const timeout = setTimeout(() => {
+      finalizar(null)
+    }, 4000)
+
+    supabase.auth.getSession()
+      .then(async ({ data: { session }, error }) => {
+        clearTimeout(timeout)
+        if (error || !session) {
+          finalizar(null)
+          return
+        }
+        await carregarPerfil(session.user.id)
+        finalizar(session)
+      })
+      .catch(() => {
+        clearTimeout(timeout)
+        finalizar(null)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        clearTimeout(timeout)
         setSession(session)
         if (session?.user?.id) await carregarPerfil(session.user.id)
         else setPerfil(null)
         setLoading(false)
+        finalizado = true
       }
     )
 

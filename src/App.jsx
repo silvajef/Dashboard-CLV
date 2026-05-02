@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useFleetData } from './hooks/useFleetData'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
@@ -13,36 +13,49 @@ import Login       from './pages/Login'
 import Usuarios    from './pages/Usuarios'
 
 const TABS_BASE = [
-  { id:'dashboard',   icon:'📊', label:'KPIs'         },
-  { id:'veiculos',    icon:'🚗', label:'Estoque'       },
-  { id:'vendidos',    icon:'🏷', label:'Vendidos'      },
-  { id:'prestadores', icon:'🔧', label:'Prestadores'   },
-  { id:'historico',   icon:'📋', label:'Histórico'     },
+  { id:'dashboard',   icon:'📊', label:'KPIs'        },
+  { id:'veiculos',    icon:'🚗', label:'Estoque'      },
+  { id:'vendidos',    icon:'🏷', label:'Vendidos'     },
+  { id:'prestadores', icon:'🔧', label:'Prestadores'  },
+  { id:'historico',   icon:'📋', label:'Histórico'    },
 ]
 
 const TAB_USUARIOS = { id:'usuarios', icon:'👥', label:'Usuários' }
 
 const ROLE_BADGE = {
-  admin:        { label: 'Admin', cor: '#ef4444' },
-  operador:     { label: 'Op.',   cor: '#3b82f6' },
-  visualizador: { label: 'Viz.',  cor: '#64748b' },
+  admin:        { label:'Admin', cor:'#ef4444' },
+  operador:     { label:'Op.',   cor:'#3b82f6' },
+  visualizador: { label:'Viz.',  cor:'#64748b' },
 }
 
 export default function App() {
   const { session, loading: authLoading, perfil, role, signOut } = useAuth()
   const [aba, setAba] = useState('dashboard')
-  const fleet = useFleetData()
   const { isMobile, isTablet } = useBreakpoint()
 
+  // 1. Auth ainda verificando → loading
   if (authLoading) return <LoadingScreen />
+
+  // 2. Sem sessão → Login (useFleetData não importa aqui)
   if (!session) return <Login />
 
-  const TABS = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS] : TABS_BASE
-  const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
+  // 3. Autenticado — agora sim carrega os dados
+  return <AppAutenticado
+    session={session} perfil={perfil} role={role} signOut={signOut}
+    aba={aba} setAba={setAba}
+    isMobile={isMobile} isTablet={isTablet}
+  />
+}
+
+// Componente separado para garantir que useFleetData só monta após auth
+function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile, isTablet }) {
+  const fleet = useFleetData()
 
   if (fleet.loading) return <LoadingScreen />
 
-  const badge = ROLE_BADGE[role] || ROLE_BADGE.visualizador
+  const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS] : TABS_BASE
+  const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
+  const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Syne','Segoe UI',sans-serif" }}>
@@ -59,9 +72,11 @@ export default function App() {
         select,input,textarea{-webkit-appearance:none}
       `}</style>
 
+      {/* ── NAV DESKTOP / TABLET ── */}
       {!isMobile && (
         <nav style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:'0 24px', position:'sticky', top:0, zIndex:100 }}>
           <div style={{ maxWidth:1400, margin:'0 auto', height:58, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ width:32, height:32, background:C.amber, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>🚛</div>
               <div>
@@ -69,6 +84,7 @@ export default function App() {
                 <span style={{ fontSize:10, color:C.muted, marginLeft:6 }}>v{APP_VERSION}</span>
               </div>
             </div>
+
             <div style={{ display:'flex', gap:2 }}>
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setAba(t.id)} style={{
@@ -79,12 +95,13 @@ export default function App() {
                   padding:'0 16px', height:58, fontSize:13,
                   fontWeight: abaAtual===t.id ? 700 : 400,
                   cursor:'pointer', display:'flex', alignItems:'center', gap:6,
-                  fontFamily:"'Syne',sans-serif"
+                  fontFamily:"'Syne',sans-serif",
                 }}>
                   {t.icon} {!isTablet || TABS.length <= 4 ? t.label : ''}
                 </button>
               ))}
             </div>
+
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <div style={{ width:7, height:7, borderRadius:'50%', background:fleet.error?C.red:C.green, boxShadow:`0 0 6px ${fleet.error?C.red:C.green}` }}/>
@@ -97,7 +114,7 @@ export default function App() {
                 <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${badge.cor}20`, color:badge.cor }}>
                   {badge.label}
                 </span>
-                <button onClick={signOut} title="Sair" style={{ background:'none', border:`1px solid ${C.border}`, borderRadius:6, padding:'4px 10px', color:C.muted, fontSize:12, cursor:'pointer', fontFamily:"'Syne',sans-serif" }}>
+                <button onClick={signOut} style={{ background:'none', border:`1px solid ${C.border}`, borderRadius:6, padding:'4px 10px', color:C.muted, fontSize:12, cursor:'pointer', fontFamily:"'Syne',sans-serif" }}>
                   Sair
                 </button>
               </div>
@@ -106,6 +123,7 @@ export default function App() {
         </nav>
       )}
 
+      {/* ── HEADER MOBILE ── */}
       {isMobile && (
         <header style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:'12px 16px', position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -120,13 +138,14 @@ export default function App() {
               <div style={{ width:6, height:6, borderRadius:'50%', background:fleet.error?C.red:C.green }}/>
               <span style={{ fontSize:10, color:C.muted }}>{fleet.error ? 'Offline' : 'Online'}</span>
             </div>
-            <button onClick={signOut} title="Sair" style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', padding:2 }}>
+            <button onClick={signOut} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', padding:2 }}>
               🚪
             </button>
           </div>
         </header>
       )}
 
+      {/* ── MAIN ── */}
       <main style={{ maxWidth:1400, margin:'0 auto', padding: isMobile ? '16px 12px 80px' : '28px 24px' }}>
         {fleet.error && <ErrorBanner message={fleet.error} onRetry={fleet.reload}/>}
         {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas}/>}
@@ -137,6 +156,7 @@ export default function App() {
         {abaAtual==='usuarios'    && <Usuarios />}
       </main>
 
+      {/* ── BOTTOM NAV MOBILE ── */}
       {isMobile && (
         <nav style={{ position:'fixed', bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:'flex', zIndex:100, paddingBottom:'env(safe-area-inset-bottom)' }}>
           {TABS.map(t => (
@@ -146,7 +166,7 @@ export default function App() {
               padding:'10px 4px 8px', cursor:'pointer',
               display:'flex', flexDirection:'column', alignItems:'center', gap:3,
               fontFamily:"'Syne',sans-serif",
-              borderTop: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent'
+              borderTop: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent',
             }}>
               <span style={{ fontSize:18 }}>{t.icon}</span>
               <span style={{ fontSize:9, fontWeight: abaAtual===t.id ? 700 : 400 }}>{t.label}</span>
