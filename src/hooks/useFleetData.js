@@ -32,18 +32,35 @@ export function useFleetData() {
     }
   }, [])
 
-  /* ── Realtime subscriptions ───────────────────────────────────── */
+  /* ── Aguarda sessão antes de carregar ─────────────────────────── */
   useEffect(() => {
-    loadAll()
+    let channel = null
 
-    const ch = supabase
-      .channel('fleet_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'veiculos' },  () => loadAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'servicos' },  () => loadAll())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'prestadores'},() => loadAll())
-      .subscribe()
+    // Aguarda sessão ativa antes de fazer qualquer query
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return // App.jsx já redireciona para Login
 
-    return () => supabase.removeChannel(ch)
+      loadAll()
+
+      channel = supabase
+        .channel('fleet_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'veiculos' },   () => loadAll())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'servicos' },   () => loadAll())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'prestadores' },() => loadAll())
+        .subscribe()
+    })
+
+    // Recarrega quando a sessão muda (ex: refresh de token)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        loadAll()
+      }
+    })
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+      subscription.unsubscribe()
+    }
   }, [loadAll])
 
   /* ── Actions ──────────────────────────────────────────────────── */
