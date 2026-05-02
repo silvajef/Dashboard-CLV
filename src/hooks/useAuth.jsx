@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { supabase } from '../lib/supabase'
 
 export const AuthContext = createContext(null)
@@ -7,20 +7,18 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-// Chave exata que o Supabase usa no localStorage deste projeto
 const SUPABASE_STORAGE_KEY = 'sb-kicsrbhzgfhullgacszb-auth-token'
 
 function tokenEstaExpirado() {
   try {
     const raw = localStorage.getItem(SUPABASE_STORAGE_KEY)
-    if (!raw) return false // sem token salvo — sem problema
+    if (!raw) return false
     const parsed = JSON.parse(raw)
     const expiresAt = parsed?.expires_at
     if (!expiresAt) return true
-    // Expira se o tempo atual >= expires_at (com 60s de margem)
     return (Date.now() / 1000) >= (expiresAt - 60)
   } catch {
-    return true // token corrompido = tratar como expirado
+    return true
   }
 }
 
@@ -34,6 +32,7 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(undefined)
   const [perfil,  setPerfil]  = useState(null)
   const [loading, setLoading] = useState(true)
+  const inicializado = useRef(false) // evita que onAuthStateChange interfira no loading inicial
 
   async function carregarPerfil(userId) {
     if (!userId) { setPerfil(null); return }
@@ -50,18 +49,38 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Remove chaves legadas de versões anteriores
     localStorage.removeItem('clv-auth')
     localStorage.removeItem('clv-auth-v2')
 
+    // ── Listener de mudanças (login, logout, refresh de token) ──────────
+    // Só atua APÓS a inicialização estar completa
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!inicializado.current) return // ignora eventos durante inicialização
+
+        if (event === 'SIGNED_OUT') {
+          setSession(null)
+          setPerfil(null)
+          return
+        }
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          setSession(session)
+          if (session?.user?.id) await carregarPerfil(session.user.id)
+          return
+        }
+      }
+    )
+
+    // ── Inicialização: verifica sessão uma única vez ──────────────────
     async function iniciar() {
-      // Intercepta token expirado ANTES de chamar getSession
-      // Bug do supabase-js: getSession trava se refresh_token for inválido
+      // Token expirado — limpa e vai para login sem chamar getSession
       if (tokenEstaExpirado()) {
         limparToken()
         await supabase.auth.signOut().catch(() => {})
         setSession(null)
         setLoading(false)
+        inicializado.current = true
         return
       }
 
@@ -70,29 +89,20 @@ export function AuthProvider({ children }) {
         if (error || !session) {
           limparToken()
           setSession(null)
-          setLoading(false)
-          return
+        } else {
+          setSession(session)
+          await carregarPerfil(session.user.id)
         }
-        setSession(session)
-        await carregarPerfil(session.user.id)
       } catch {
         limparToken()
         setSession(null)
       } finally {
         setLoading(false)
+        inicializado.current = true
       }
     }
 
     iniciar()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session)
-        if (session?.user?.id) await carregarPerfil(session.user.id)
-        else setPerfil(null)
-        setLoading(false)
-      }
-    )
 
     return () => subscription.unsubscribe()
   }, [])
