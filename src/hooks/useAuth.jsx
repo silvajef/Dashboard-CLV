@@ -27,18 +27,17 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    async function iniciar() {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+    // Adicione isso dentro da função iniciar(), ANTES do getSession:
+async function iniciar() {
+  // Limpa formato antigo de token se existir
+  const temFormatoAntigo = localStorage.getItem('access_token')
+  if (temFormatoAntigo) {
+    localStorage.clear()
+  }
 
-        if (error) {
-          // Token inválido — limpa tudo e manda para login
-          await supabase.auth.signOut()
-          localStorage.clear()
-          setSession(null)
-          setLoading(false)
-          return
-        }
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    // ... resto do código
 
         setSession(session)
         await carregarPerfil(session?.user?.id)
