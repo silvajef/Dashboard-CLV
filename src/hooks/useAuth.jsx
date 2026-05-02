@@ -27,23 +27,22 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Adicione isso dentro da função iniciar(), ANTES do getSession:
-async function iniciar() {
-  // Limpa formato antigo de token se existir
-  const temFormatoAntigo = localStorage.getItem('access_token')
-  if (temFormatoAntigo) {
-    localStorage.clear()
-  }
+    // Remove chaves legadas de versões anteriores
+    localStorage.removeItem('clv-auth')
+    localStorage.removeItem('clv-auth-v2')
 
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession()
-    // ... resto do código
-
+    async function iniciar() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          await supabase.auth.signOut()
+          setSession(null)
+          setLoading(false)
+          return
+        }
         setSession(session)
         await carregarPerfil(session?.user?.id)
       } catch {
-        // Qualquer erro inesperado — limpa e manda para login
-        localStorage.clear()
         setSession(null)
       } finally {
         setLoading(false)
@@ -64,8 +63,9 @@ async function iniciar() {
   }, [])
 
   async function signOut() {
+    localStorage.removeItem('clv-auth')
+    localStorage.removeItem('clv-auth-v2')
     await supabase.auth.signOut()
-    localStorage.clear()
     setSession(null)
     setPerfil(null)
   }
