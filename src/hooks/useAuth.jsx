@@ -9,10 +9,6 @@ export function useAuth() {
 
 const SUPABASE_STORAGE_KEY = 'sb-kicsrbhzgfhullgacszb-auth-token'
 
-/**
- * Lê o token direto do localStorage sem chamar getSession().
- * Bug do supabase-js: getSession() trava em cold start de aba.
- */
 function lerSessaoDoStorage() {
   try {
     const raw = localStorage.getItem(SUPABASE_STORAGE_KEY)
@@ -21,10 +17,9 @@ function lerSessaoDoStorage() {
     const parsed = JSON.parse(raw)
     if (!parsed?.access_token || !parsed?.user) return null
 
-    // Verifica se ainda é válido
     const expiresAt = parsed.expires_at
     if (!expiresAt || (Date.now() / 1000) >= (expiresAt - 60)) {
-      return null // expirado
+      return null
     }
 
     return {
@@ -67,23 +62,40 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('clv-auth')
     localStorage.removeItem('clv-auth-v2')
 
-    // Lê sessão direto do localStorage — não chama getSession()
-    const sessaoSalva = lerSessaoDoStorage()
+    async function iniciar() {
+      const sessaoSalva = lerSessaoDoStorage()
 
-    if (!sessaoSalva) {
-      // Sem sessão válida — limpa qualquer resto e vai para login
-      limparToken()
-      setSession(null)
-      setLoading(false)
-    } else {
-      // Sessão válida encontrada — usa direto sem aguardar Supabase
+      if (!sessaoSalva) {
+        limparToken()
+        setSession(null)
+        setLoading(false)
+        return
+      }
+
+      // Injeta a sessão no cliente Supabase para autenticar as queries
+      // setSession é diferente de getSession — não trava em cold start
+      try {
+        await supabase.auth.setSession({
+          access_token: sessaoSalva.access_token,
+          refresh_token: sessaoSalva.refresh_token,
+        })
+      } catch {
+        // Se setSession falhar, limpa e vai para login
+        limparToken()
+        setSession(null)
+        setLoading(false)
+        return
+      }
+
       setSession(sessaoSalva)
       setLoading(false)
-      // Carrega perfil em background (não bloqueia a UI)
-      carregarPerfil(sessaoSalva.user.id)
+
+      // Carrega perfil agora que o cliente está autenticado
+      await carregarPerfil(sessaoSalva.user.id)
     }
 
-    // Listener para mudanças (login, logout)
+    iniciar()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN') {
@@ -98,7 +110,6 @@ export function AuthProvider({ children }) {
           setLoading(false)
           return
         }
-        // Outros eventos (TOKEN_REFRESHED, INITIAL_SESSION) são ignorados
       }
     )
 
