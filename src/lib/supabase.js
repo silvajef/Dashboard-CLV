@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
-    storageKey: 'clv-auth',
+    storageKey: 'clv-auth-v2',  // mudou de 'clv-auth' para 'clv-auth-v2'
     storage: window.localStorage,
     autoRefreshToken: true,
     detectSessionInUrl: true,
