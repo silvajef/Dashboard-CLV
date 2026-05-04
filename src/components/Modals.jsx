@@ -12,14 +12,14 @@ import { useBreakpoint } from '../lib/responsive'
 const TIPOS_VEICULO = ['Van','Pick-up','Caminhão Leve','Caminhão Médio','Caminhão Pesado','Micro-ônibus','Outro']
 
 /* ── DiffFipe ─────────────────────────────────────────────────── */
-function DiffFipe({ valorCompra, valorFipe }) {
-  if (!valorFipe || !valorCompra) return null
-  const diff = Number(valorCompra) - Number(valorFipe)
+function DiffFipe({ valorAnuncio, valorFipe }) {
+  if (!valorFipe || !valorAnuncio) return null
+  const diff = Number(valorAnuncio) - Number(valorFipe)
   const pct  = (diff / Number(valorFipe)) * 100
   const cor  = diff < 0 ? C.green : diff > 0 ? C.red : C.muted
   return (
     <div style={{ background:C.card, border:`1px solid ${cor}33`, borderRadius:8, padding:'8px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8, marginTop:8 }}>
-      <span style={{ fontSize:12, color:C.muted }}>Comparativo vs FIPE</span>
+      <span style={{ fontSize:12, color:C.muted }}>Anúncio vs FIPE</span>
       <div style={{ display:'flex', gap:12 }}>
         <span style={{ fontSize:13, fontWeight:800, color:cor, fontFamily:"'JetBrains Mono',monospace" }}>{diff>=0?'+':''}{fmtR(diff)}</span>
         <span style={{ fontSize:12, fontWeight:700, color:cor }}>({pct>=0?'+':''}{pct.toFixed(1)}%)</span>
@@ -78,8 +78,8 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
     valor_anuncio:  data?.valor_anuncio || 0,   // NOVO v3.8
   })
 
-  // Custos fixos — seção separada
-  const cf0 = data?.custos_fixos
+  // Custos fixos — seção separada (banco retorna array na relação)
+  const cf0 = Array.isArray(data?.custos_fixos) ? data.custos_fixos[0] : data?.custos_fixos
   const [cf, setCf] = useState({
     ipva:          cf0?.ipva         || 0,
     licenciamento: cf0?.licenciamento|| 0,
@@ -224,7 +224,7 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
               style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.muted, padding:'10px 14px', fontSize:13, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:'monospace' }}/>
           </div>
           <div style={{ display:'flex', alignItems:'flex-end' }}>
-            <DiffFipe valorCompra={f.valor_compra} valorFipe={f.valor_fipe}/>
+            <DiffFipe valorAnuncio={f.valor_anuncio} valorFipe={f.valor_fipe}/>
           </div>
         </div>
         <ComparativoQuatroValores valorCompra={f.valor_compra} valorFipe={f.valor_fipe} valorAnuncio={f.valor_anuncio}/>

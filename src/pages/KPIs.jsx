@@ -36,7 +36,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
     const taxaGiro     = todos.length > 0 ? (vendidos.length/todos.length)*100 : 0
 
     const receita      = vendidos.reduce((s,v)=>s+(v.valor_venda||0),0)
-    const custoAquis   = vendidos.reduce((s,v)=>s+(v.valor_estoque||0),0)
+    const custoAquis   = vendidos.reduce((s,v)=>s+(v.valor_compra||0),0)
     const custoMntVend = vendidos.reduce((s,v)=>s+custoV(v),0)
     const lucro        = receita - custoAquis - custoMntVend
     const margem       = receita > 0 ? (lucro/receita)*100 : 0
@@ -45,7 +45,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
 
     const custoMntTotal  = todos.reduce((s,v)=>s+custoV(v),0)
     const custoMntAtivos = ativos.reduce((s,v)=>s+custoV(v),0)
-    const valorEstTotal  = ativos.reduce((s,v)=>s+(v.valor_estoque||0),0)
+    const valorEstTotal  = ativos.reduce((s,v)=>s+(v.valor_compra||0),0)
     const indiceCusto    = valorEstTotal > 0 ? (custoMntAtivos/valorEstTotal)*100 : 0
     const custoMedioV    = ativos.length > 0 ? custoMntAtivos/ativos.length : 0
 
@@ -53,7 +53,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
     const porTipo = tipos.map(tipo => {
       const vt = todos.filter(v=>v.tipo===tipo)
       const vv = vt.filter(v=>v.status==='vendido')
-      const lucroT = vv.reduce((s,v)=>{const c=custoV(v);return s+(v.valor_venda||0)-(v.valor_estoque||0)-c},0)
+      const lucroT = vv.reduce((s,v)=>{const c=custoV(v);return s+(v.valor_venda||0)-(v.valor_compra||0)-c},0)
       const recT   = vv.reduce((s,v)=>s+(v.valor_venda||0),0)
       const margemT= recT>0?(lucroT/recT)*100:0
       const diasT  = vt.map(v=>diasNoEstoque(v))
@@ -66,11 +66,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
       const m = mesAno(v.data_venda)
       if (!mesesMap[m]) mesesMap[m]={mes:m,qtd:0,receita:0,lucro:0}
       mesesMap[m].qtd++; mesesMap[m].receita+=v.valor_venda||0
-      mesesMap[m].lucro+=(v.valor_venda||0)-(v.valor_estoque||0)-custoV(v)
+      mesesMap[m].lucro+=(v.valor_venda||0)-(v.valor_compra||0)-custoV(v)
     })
     const mesesVenda = Object.values(mesesMap).sort((a,b)=>a.mes.localeCompare(b.mes))
 
-    const rankingCusto = ativos.map(v=>({...v,diasEstoque:diasNoEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_estoque>0?(custoV(v)/v.valor_estoque)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
+    const rankingCusto = ativos.map(v=>({...v,diasEstoque:diasNoEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
     const rankingDias  = [...ativos].sort((a,b)=>diasNoEstoque(b)-diasNoEstoque(a))
 
     return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
@@ -312,14 +312,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
               </thead>
               <tbody>
                 {calc.vendidos.map(v=>{
-                  const mnt=custoV(v); const lucro=(v.valor_venda||0)-(v.valor_estoque||0)-mnt
+                  const mnt=custoV(v); const lucro=(v.valor_venda||0)-(v.valor_compra||0)-mnt
                   const mg=v.valor_venda>0?(lucro/v.valor_venda)*100:0
                   const cor=mg>=10?C.green:mg>=5?C.amber:C.red
                   return(
                     <tr key={v.id} style={{borderBottom:`1px solid ${C.border}`}}>
                       <td style={{padding:'9px 10px',fontWeight:700}}>{v.modelo}</td>
                       <td style={{padding:'9px 10px',color:C.muted,...mono}}>{v.placa}</td>
-                      {[fmtR(v.valor_estoque),fmtR(mnt),fmtR(v.valor_venda)].map((val,i)=>(
+                      {[fmtR(v.valor_compra),fmtR(mnt),fmtR(v.valor_venda)].map((val,i)=>(
                         <td key={i} style={{padding:'9px 10px',textAlign:'right',...mono}}>{val}</td>
                       ))}
                       <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtR(lucro)}</td>
@@ -364,7 +364,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
                     </div>
                     <GaugeBar value={v.pctCusto} max={Math.max((calc.rankingCusto[0]?.pctCusto||1),(metas.custo_max_pct||5)*2)} color={cor} height={5}/>
                     <div style={{display:'flex',justifyContent:'space-between',marginTop:4,fontSize:10,color:C.muted}}>
-                      <span>Custo: {fmtR(v.custoTotal)}</span><span>Est: {fmtR(v.valor_estoque)}</span>
+                      <span>Custo: {fmtR(v.custoTotal)}</span><span>Est: {fmtR(v.valor_compra)}</span>
                     </div>
                   </div>
                 )

@@ -26,7 +26,9 @@ export async function upsertVeiculo(veiculo) {
   if (error) throw error
 
   // Salva custos_fixos se fornecido (_custos_fixos vem do ModalVeiculo)
-  const cfPayload = _custos_fixos || custos_fixos
+  // custos_fixos do banco vem como array (relação 1-N), pegar primeiro elemento
+  const cfRaw = _custos_fixos || custos_fixos
+  const cfPayload = Array.isArray(cfRaw) ? cfRaw[0] : cfRaw
   if (cfPayload && data?.id) {
     await upsertCustosFixos({ veiculo_id: data.id, ...cfPayload })
   }

@@ -104,8 +104,9 @@ export default function Veiculos({ veiculos, prestadores, saveVeiculo, removeVei
               <SectionHead title="Valores"/>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                 {[
-                  ['Valor de Compra', fmtR(vAtual.valor_estoque), C.amber],
-                  ['Tabela FIPE',     vAtual.valor_fipe ? fmtR(vAtual.valor_fipe) : '—', C.green],
+                  ['Valor de Compra',  fmtR(vAtual.valor_compra),                                        C.amber],
+                  ['Valor de Anúncio', vAtual.valor_anuncio ? fmtR(vAtual.valor_anuncio) : '—',           C.orange],
+                  ['Tabela FIPE',      vAtual.valor_fipe    ? fmtR(vAtual.valor_fipe)    : '—',           C.green],
                 ].map(([l,val,cor])=>(
                   <div key={l} style={{ background:C.surface, borderRadius:8, padding:'12px 14px', borderTop:`3px solid ${cor}` }}>
                     <div style={{ fontSize:10, color:C.muted, fontWeight:700, marginBottom:4 }}>{l}</div>
@@ -113,12 +114,12 @@ export default function Veiculos({ veiculos, prestadores, saveVeiculo, removeVei
                   </div>
                 ))}
               </div>
-              {vAtual.valor_fipe > 0 && vAtual.valor_estoque > 0 && (()=>{
-                const diff = vAtual.valor_estoque - vAtual.valor_fipe
+              {vAtual.valor_fipe > 0 && vAtual.valor_anuncio > 0 && (()=>{
+                const diff = vAtual.valor_anuncio - vAtual.valor_fipe
                 const pct  = (diff/vAtual.valor_fipe)*100
                 const cor  = diff<0?C.green:diff>0?C.red:C.muted
                 return <div style={{ background:C.cardHi, borderRadius:8, padding:'10px 14px', border:`1px solid ${cor}33`, marginBottom:16 }}>
-                  <div style={{ fontSize:10, color:C.muted, fontWeight:700, marginBottom:4 }}>COMPARATIVO VS FIPE</div>
+                  <div style={{ fontSize:10, color:C.muted, fontWeight:700, marginBottom:4 }}>ANÚNCIO VS FIPE</div>
                   <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
                     <span style={{ fontSize:16, fontWeight:800, color:cor, fontFamily:"'JetBrains Mono',monospace" }}>{diff>=0?'+':''}{fmtR(diff)}</span>
                     <span style={{ fontSize:13, fontWeight:700, color:cor }}>({pct>=0?'+':''}{pct.toFixed(1)}%)</span>
@@ -185,8 +186,8 @@ export default function Veiculos({ veiculos, prestadores, saveVeiculo, removeVei
               ['Mão de Obra',     (vAtual.servicos||[]).reduce((s,m)=>s+(m.custo_mao||0),0),   C.green],
               ['Outros',          (vAtual.servicos||[]).reduce((s,m)=>s+(m.outros||0),0),       '#22d4dd'],
               ['Total Manutenção',custoV(vAtual),                                               C.amber],
-              ['Valor de Compra', vAtual.valor_estoque||0,                                      '#a78bfa'],
-              ['Custo Total',     (vAtual.valor_estoque||0)+custoV(vAtual),                     C.red],
+              ['Valor de Compra', vAtual.valor_compra||0,                                       '#a78bfa'],
+              ['Custo Total',     (vAtual.valor_compra||0)+custoV(vAtual),                      C.red],
             ].map(([l,val,c])=>(
               <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:'14px 16px', borderTop:`3px solid ${c}` }}>
                 <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>{l}</div>
@@ -256,8 +257,8 @@ export default function Veiculos({ veiculos, prestadores, saveVeiculo, removeVei
                   {v.valor_fipe > 0 && (
                     <div style={{ marginTop:3, fontSize:11, color:C.green, display:'flex', gap:6 }}>
                       <span>📊 FIPE: {fmtR(v.valor_fipe)}</span>
-                      {v.valor_estoque > 0 && (()=>{
-                        const diff = v.valor_estoque - v.valor_fipe
+                      {v.valor_anuncio > 0 && (()=>{
+                        const diff = v.valor_anuncio - v.valor_fipe
                         const cor  = diff<0?C.green:C.red
                         return <span style={{ color:cor, fontWeight:700 }}>({diff>=0?'+':''}{((diff/v.valor_fipe)*100).toFixed(1)}%)</span>
                       })()}
@@ -268,7 +269,7 @@ export default function Veiculos({ veiculos, prestadores, saveVeiculo, removeVei
 
               <div style={{ display:'flex', alignItems:'center', gap:isMobile?10:16, flexShrink:0 }}>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontWeight:700, color:C.amber, fontSize:14, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(v.valor_estoque)}</div>
+                  <div style={{ fontWeight:700, color:C.amber, fontSize:14, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(v.valor_compra)}</div>
                   {custoMnt > 0 && <div style={{ fontSize:11, color:C.muted }}>Mnt: {fmtR(custoMnt)}</div>}
                 </div>
                 {!isMobile && <Badge status={v.status} cfg={STATUS_VEICULO_CFG}/>}
