@@ -5,7 +5,7 @@ import { useAuth } from './hooks/useAuth'
 import { LoadingScreen, ErrorBanner } from './components/UI'
 import { APP_NAME, APP_VERSION, C } from './lib/constants'
 import Veiculos    from './pages/Veiculos'
-import Vendidos    from './pages/Vendidos'
+import PosVenda    from './pages/PosVenda'
 import Prestadores from './pages/Prestadores'
 import Historico   from './pages/Historico'
 import KPIs        from './pages/KPIs'
@@ -15,7 +15,7 @@ import Usuarios    from './pages/Usuarios'
 const TABS_BASE = [
   { id:'dashboard',   icon:'📊', label:'KPIs'        },
   { id:'veiculos',    icon:'🚗', label:'Estoque'      },
-  { id:'vendidos',    icon:'🏷', label:'Vendidos'     },
+  { id:'posvenda',    icon:'🛡', label:'Pós-Venda'    },
   { id:'prestadores', icon:'🔧', label:'Prestadores'  },
   { id:'historico',   icon:'📋', label:'Histórico'    },
 ]
@@ -33,13 +33,9 @@ export default function App() {
   const [aba, setAba] = useState('dashboard')
   const { isMobile, isTablet } = useBreakpoint()
 
-  // Auth ainda verificando → loading
   if (authLoading) return <LoadingScreen />
+  if (!session)    return <Login />
 
-  // Sem sessão → Login
-  if (!session) return <Login />
-
-  // Autenticado — monta AppAutenticado apenas uma vez
   return (
     <AppAutenticado
       session={session} perfil={perfil} role={role} signOut={signOut}
@@ -51,12 +47,8 @@ export default function App() {
 
 function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile, isTablet }) {
   const fleet = useFleetData()
-  // Mantém referência se já carregou ao menos uma vez
-  // Evita que fleet.loading = true em refreshes posteriores mostre LoadingScreen
   const jaCarregou = useRef(false)
   if (!fleet.loading) jaCarregou.current = true
-
-  // Só mostra LoadingScreen na primeira carga — nunca depois
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
 
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS] : TABS_BASE
@@ -154,9 +146,10 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
       {/* ── MAIN ── */}
       <main style={{ maxWidth:1400, margin:'0 auto', padding: isMobile ? '16px 12px 80px' : '28px 24px' }}>
         {fleet.error && <ErrorBanner message={fleet.error} onRetry={fleet.reload}/>}
+
         {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas}/>}
         {abaAtual==='veiculos'    && <Veiculos     veiculos={fleet.veiculos} prestadores={fleet.prestadores} saveVeiculo={fleet.saveVeiculo} removeVeiculo={fleet.removeVeiculo} saveServico={fleet.saveServico} removeServico={fleet.removeServico}/>}
-        {abaAtual==='vendidos'    && <Vendidos     veiculos={fleet.veiculos}/>}
+        {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
         {abaAtual==='usuarios'    && <Usuarios />}
