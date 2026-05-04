@@ -1,7 +1,6 @@
 /**
  * Inputs especializados — Dashboard CLV
  */
-import { useState } from 'react'
 import { C } from '../lib/constants'
 import { parseMoeda, toUpper } from '../lib/format'
 
@@ -26,6 +25,7 @@ function FieldWrap({ label, required, children, style }) {
 
 /* ── MoedaInput ───────────────────────────────────────────────── */
 export function MoedaInput({ label, value, onChange, required, style, placeholder, highlight }) {
+  // Converte número → string formatada para exibir
   const toDisplay = (num) => {
     if (!num && num !== 0) return ''
     const cents = Math.round(Number(num) * 100)
@@ -34,6 +34,7 @@ export function MoedaInput({ label, value, onChange, required, style, placeholde
   }
 
   const handleChange = (e) => {
+    // Remove tudo que não é dígito
     const digits = e.target.value.replace(/\D/g, '')
     if (!digits) { onChange(0); return }
     const num = parseInt(digits, 10) / 100
@@ -73,154 +74,12 @@ export function UpperInput({ label, value, onChange, required, placeholder, styl
   )
 }
 
-/* ── DocInput — CPF/CNPJ com máscara automática ───────────────── */
-/**
- * Detecta CPF (11 dígitos) ou CNPJ (14 dígitos) e aplica máscara:
- *   CPF:  000.000.000-00
- *   CNPJ: 00.000.000/0000-00
- * onChange retorna o valor formatado (com máscara).
- */
-export function DocInput({ label, value, onChange, required, style, placeholder }) {
-  function aplicarMascara(raw) {
-    const digits = raw.replace(/\D/g, '').slice(0, 14)
-    if (digits.length <= 11) {
-      // CPF: 000.000.000-00
-      return digits
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
-    } else {
-      // CNPJ: 00.000.000/0000-00
-      return digits
-        .replace(/(\d{2})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1/$2')
-        .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
-    }
-  }
-
-  const [focused, setFocused] = useState(false)
-  const digitos = (value || '').replace(/\D/g, '').length
-  const tipo = digitos > 11 ? 'CNPJ' : digitos === 11 ? 'CPF' : ''
-
-  return (
-    <FieldWrap label={label} required={required} style={style}>
-      <div style={{ position:'relative' }}>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={value || ''}
-          onChange={e => onChange(aplicarMascara(e.target.value))}
-          placeholder={placeholder || '000.000.000-00 ou 00.000.000/0000-00'}
-          style={{
-            ...baseStyle,
-            border: `1px solid ${focused ? C.amber : C.border}`,
-            fontFamily: "'JetBrains Mono',monospace",
-            paddingRight: tipo ? 52 : 14,
-          }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-        />
-        {tipo && (
-          <span style={{
-            position:'absolute', right:10, top:'50%',
-            transform:'translateY(-50%)',
-            fontSize:9, fontWeight:800, color:C.amber,
-            background:`${C.amber}18`, padding:'2px 6px',
-            borderRadius:4, pointerEvents:'none',
-          }}>
-            {tipo}
-          </span>
-        )}
-      </div>
-    </FieldWrap>
-  )
-}
-
-/* ── DateInput — DD/MM/AAAA com conversão automática ─────────── */
-/**
- * Exibe a data no formato DD/MM/AAAA para o usuário.
- * Internamente converte para YYYY-MM-DD antes de chamar onChange.
- *
- * Props:
- *   value    — string no formato YYYY-MM-DD (formato do banco)
- *   onChange — recebe string YYYY-MM-DD
- */
-export function DateInput({ label, value, onChange, required, style }) {
-  // Converte YYYY-MM-DD → DD/MM/AAAA para exibição
-  function isoParaDisplay(iso) {
-    if (!iso) return ''
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(iso)) return iso // já é display
-    const [y, m, d] = iso.split('-')
-    if (!y || !m || !d) return iso
-    return `${d}/${m}/${y}`
-  }
-
-  // Aplica máscara DD/MM/AAAA conforme o usuário digita
-  function aplicarMascaraData(raw) {
-    const digits = raw.replace(/\D/g, '').slice(0, 8)
-    return digits
-      .replace(/(\d{2})(\d)/, '$1/$2')
-      .replace(/(\d{2})(\d)/, '$1/$2')
-  }
-
-  // Converte DD/MM/AAAA → YYYY-MM-DD quando completo
-  function displayParaIso(display) {
-    const digits = display.replace(/\D/g, '')
-    if (digits.length < 8) return null // incompleto
-    const d = digits.slice(0, 2)
-    const m = digits.slice(2, 4)
-    const y = digits.slice(4, 8)
-    return `${y}-${m}-${d}`
-  }
-
-  const [inputVal, setInputVal] = useState(isoParaDisplay(value))
-  const [focused,  setFocused]  = useState(false)
-
-  // Sincroniza quando value muda externamente
-  if (!focused && value && isoParaDisplay(value) !== inputVal) {
-    setInputVal(isoParaDisplay(value))
-  }
-
-  function handleChange(e) {
-    const masked = aplicarMascaraData(e.target.value)
-    setInputVal(masked)
-    const iso = displayParaIso(masked)
-    if (iso) onChange(iso)
-  }
-
-  const completo = inputVal.replace(/\D/g, '').length === 8
-  const cor = completo ? C.green : focused ? C.amber : C.border
-
-  return (
-    <FieldWrap label={label} required={required} style={style}>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={inputVal}
-        onChange={handleChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => {
-          setFocused(false)
-          // Se o campo ficou incompleto ao sair, mantém o valor atual
-        }}
-        placeholder="DD/MM/AAAA"
-        maxLength={10}
-        style={{
-          ...baseStyle,
-          border: `1px solid ${cor}`,
-          fontFamily: "'JetBrains Mono',monospace",
-          letterSpacing: '0.05em',
-        }}
-      />
-    </FieldWrap>
-  )
-}
-
 /* ── SelectFipe ───────────────────────────────────────────────── */
+// onChange recebe (codigo, nome) — nome vem do texto do <option>
 export function SelectFipe({ label, value, onChange, options, placeholder, loading, disabled, required }) {
   const handleChange = (e) => {
     const codigo = e.target.value
+    // Pega o texto visível do option selecionado — método mais confiável
     const idx  = e.target.selectedIndex
     const nome = idx > 0 ? e.target.options[idx].text : ''
     console.log('[SelectFipe] onChange:', { label, codigo, nome })

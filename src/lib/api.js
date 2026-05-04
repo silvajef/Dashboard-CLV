@@ -1,5 +1,6 @@
 /**
  * Dashboard CLV — Data Access Layer (Supabase)
+ * v3.8 — valor_compra (era valor_estoque), custos_fixos, vendedor, comissao_pct
  */
 import { supabase } from './supabase'
 
@@ -7,14 +8,15 @@ import { supabase } from './supabase'
 export async function getVeiculos() {
   const { data, error } = await supabase
     .from('veiculos')
-    .select('*, servicos(*, prestador:prestadores(id, nome))')
+    .select('*, servicos(*, prestador:prestadores(id, nome)), custos_fixos(*)')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data
 }
 
 export async function upsertVeiculo(veiculo) {
-  const { servicos, prestador, id, ...payload } = veiculo
+  // Extrai relações e campos virtuais que não vão para o banco
+  const { servicos, prestador, custos_fixos, _custos_fixos, id, ...payload } = veiculo
   payload.modelo = payload.modelo_nome || payload.modelo || ''
 
   const { data, error } = id
@@ -22,11 +24,57 @@ export async function upsertVeiculo(veiculo) {
     : await supabase.from('veiculos').insert(payload).select().single()
 
   if (error) throw error
+
+  // Salva custos_fixos se fornecido (_custos_fixos vem do ModalVeiculo)
+  const cfPayload = _custos_fixos || custos_fixos
+  if (cfPayload && data?.id) {
+    await upsertCustosFixos({ veiculo_id: data.id, ...cfPayload })
+  }
+
   return data
 }
 
 export async function deleteVeiculo(id) {
   const { error } = await supabase.from('veiculos').delete().eq('id', id)
+  if (error) throw error
+}
+
+/* ── CUSTOS FIXOS (v3.8) ────────────────────────────────────────────────── */
+export async function upsertCustosFixos(custos) {
+  const { id, veiculo_id, ...payload } = custos
+
+  // Tenta UPDATE primeiro (existe registro para este veículo?)
+  const { data: existente } = await supabase
+    .from('custos_fixos')
+    .select('id')
+    .eq('veiculo_id', veiculo_id)
+    .maybeSingle()
+
+  if (existente) {
+    const { data, error } = await supabase
+      .from('custos_fixos')
+      .update(payload)
+      .eq('veiculo_id', veiculo_id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  } else {
+    const { data, error } = await supabase
+      .from('custos_fixos')
+      .insert({ veiculo_id, ...payload })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+}
+
+export async function deleteCustosFixos(veiculoId) {
+  const { error } = await supabase
+    .from('custos_fixos')
+    .delete()
+    .eq('veiculo_id', veiculoId)
   if (error) throw error
 }
 
@@ -71,7 +119,6 @@ export async function deletePrestador(id) {
 }
 
 /* ── METAS ─────────────────────────────────────────────────────────────── */
-// CORRIGIDO: bug v3.6 onde data/error estavam sendo usados antes de declarados
 export async function getMetas() {
   const { data, error } = await supabase
     .from('metas')
@@ -103,16 +150,12 @@ export async function getClientes() {
 
 export async function upsertCliente(cliente) {
   const { id, ...payload } = cliente
-
-  // Limpa cpf_cnpj vazio para permitir multiple NULLs no índice único
   if (!payload.cpf_cnpj || payload.cpf_cnpj.trim() === '') {
     payload.cpf_cnpj = null
   }
-
   const { data, error } = id
     ? await supabase.from('clientes').update(payload).eq('id', id).select().single()
     : await supabase.from('clientes').insert(payload).select().single()
-
   if (error) throw error
   return data
 }
@@ -126,29 +169,19 @@ export async function deleteCliente(id) {
 export async function getVendasRelacao() {
   const { data, error } = await supabase
     .from('vendas_relacao')
-    .select(`
-      *,
-      cliente:clientes(*),
-      veiculo:veiculos(*)
-    `)
+    .select('*, cliente:clientes(*), veiculo:veiculos(*)')
     .order('data_venda', { ascending: false })
-
   if (error) throw error
   return data || []
 }
 
 export async function upsertVendaRelacao(venda) {
   const { id, cliente, veiculo, garantia_fim, ...payload } = venda
-
-  // garantia_fim é gerada automaticamente pelo banco — não enviar
-  // cliente/veiculo são objetos relacionais — não enviar
-
   const { data, error } = id
     ? await supabase.from('vendas_relacao').update(payload).eq('id', id)
         .select('*, cliente:clientes(*), veiculo:veiculos(*)').single()
     : await supabase.from('vendas_relacao').insert(payload)
         .select('*, cliente:clientes(*), veiculo:veiculos(*)').single()
-
   if (error) throw error
   return data
 }
@@ -158,44 +191,28 @@ export async function deleteVendaRelacao(id) {
   if (error) throw error
 }
 
-/**
- * registrarVenda
- *
- * Operação composta que:
- *   1. Cria/atualiza o cliente (deduplicando por cpf_cnpj)
- *   2. Marca o veículo como vendido
- *   3. Cria o registro em vendas_relacao com garantia
- *
- * Substitui o fluxo antigo onde a venda só atualizava o veículo.
- */
 export async function registrarVenda({ veiculo_id, cliente, valor_venda, data_venda, garantia_dias = 90 }) {
-  // 1. Cria/encontra o cliente
   let clienteId = cliente.id
 
   if (!clienteId) {
-    // Tenta encontrar cliente existente pelo cpf_cnpj
     if (cliente.cpf_cnpj && cliente.cpf_cnpj.trim() !== '') {
       const { data: existente } = await supabase
         .from('clientes')
         .select('id')
         .eq('cpf_cnpj', cliente.cpf_cnpj.trim())
         .maybeSingle()
-
       if (existente) clienteId = existente.id
     }
-
-    // Se não encontrou, cria
     if (!clienteId) {
       const novoCliente = await upsertCliente(cliente)
       clienteId = novoCliente.id
     }
   }
 
-  // 2. Atualiza o veículo (mantém compatibilidade com a estrutura atual)
   await supabase
     .from('veiculos')
     .update({
-      status:         'vendido',
+      status: 'vendido',
       valor_venda,
       data_venda,
       comprador_nome: cliente.nome,
@@ -203,7 +220,6 @@ export async function registrarVenda({ veiculo_id, cliente, valor_venda, data_ve
     })
     .eq('id', veiculo_id)
 
-  // 3. Cria a relação de venda com garantia
   const venda = await upsertVendaRelacao({
     veiculo_id,
     cliente_id:      clienteId,
