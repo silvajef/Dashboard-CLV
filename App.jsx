@@ -3,19 +3,17 @@ import { useAuth } from './hooks/useAuth'
 import Login from './pages/Login'
 import KPIs from './pages/KPIs'
 import Veiculos from './pages/Veiculos'
-import Vendidos from './pages/Vendidos'
+import PosVenda from './pages/PosVenda'
 import Prestadores from './pages/Prestadores'
 import Historico from './pages/Historico'
 import Usuarios from './pages/Usuarios'
 import { useFleetData } from './hooks/useFleetData'
 import { useBreakpoint } from './lib/responsive'
 
-// ─── Itens de navegação ───────────────────────────────────────────────────────
-// A página "Usuários" só aparece na nav se o role for admin
 const NAV_BASE = [
   { id: 'kpis',        label: 'Dashboard',   icon: '📊', roles: ['admin','operador','visualizador'] },
   { id: 'veiculos',    label: 'Estoque',      icon: '🚛', roles: ['admin','operador','visualizador'] },
-  { id: 'vendidos',    label: 'Vendidos',     icon: '✅', roles: ['admin','operador','visualizador'] },
+  { id: 'posvenda',    label: 'Pós-Venda',    icon: '🛡', roles: ['admin','operador','visualizador'] },
   { id: 'prestadores', label: 'Prestadores',  icon: '🔧', roles: ['admin','operador','visualizador'] },
   { id: 'historico',   label: 'Histórico',    icon: '📋', roles: ['admin','operador','visualizador'] },
   { id: 'usuarios',    label: 'Usuários',     icon: '👥', roles: ['admin'] },
@@ -33,18 +31,17 @@ const C = {
 }
 
 const ROLE_BADGE = {
-  admin:        { label: 'Admin',  cor: C.danger  },
-  operador:     { label: 'Op.',    cor: C.accent   },
-  visualizador: { label: 'Viz.',   cor: C.muted    },
+  admin:        { label: 'Admin', cor: C.danger },
+  operador:     { label: 'Op.',   cor: C.accent },
+  visualizador: { label: 'Viz.',  cor: C.muted  },
 }
 
 export default function App() {
   const { session, loading, perfil, role, signOut } = useAuth()
   const [pagina, setPagina] = useState('kpis')
-  const bp = useBreakpoint()
-  const fleet = useFleetData(!!session)
+  const bp    = useBreakpoint()
+  const fleet = useFleetData()
 
-  // ── Aguardando verificação de sessão ─────────────────────────────────────
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: C.bg, display: 'flex',
@@ -56,40 +53,64 @@ export default function App() {
     )
   }
 
-  // ── Sem sessão → Login ────────────────────────────────────────────────────
   if (!session) return <Login />
 
-  // ── Itens de nav visíveis para o role atual ───────────────────────────────
-  const navItems = NAV_BASE.filter(item => item.roles.includes(role))
-
-  // Garante que a página atual seja visível para o role
+  const navItems   = NAV_BASE.filter(item => item.roles.includes(role))
   const paginaAtual = navItems.find(i => i.id === pagina) ? pagina : navItems[0]?.id || 'kpis'
-
-  const fleetProps = { data: fleet.data, actions: fleet.actions, loading: fleet.loading }
+  const badgeRole  = ROLE_BADGE[role] || ROLE_BADGE.visualizador
+  const isDesktop  = bp === 'desktop'
+  const isMobile   = bp === 'mobile'
 
   function renderPagina() {
     switch (paginaAtual) {
-      case 'kpis':        return <KPIs        {...fleetProps} />
-      case 'veiculos':    return <Veiculos    {...fleetProps} />
-      case 'vendidos':    return <Vendidos    {...fleetProps} />
-      case 'prestadores': return <Prestadores {...fleetProps} />
-      case 'historico':   return <Historico   {...fleetProps} />
-      case 'usuarios':    return <Usuarios />
-      default:            return <KPIs        {...fleetProps} />
+      case 'kpis':
+        return <KPIs veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas}/>
+
+      case 'veiculos':
+        return <Veiculos
+          veiculos={fleet.veiculos}
+          prestadores={fleet.prestadores}
+          saveVeiculo={fleet.saveVeiculo}
+          removeVeiculo={fleet.removeVeiculo}
+          saveServico={fleet.saveServico}
+          removeServico={fleet.removeServico}
+        />
+
+      case 'posvenda':
+        return <PosVenda
+          veiculos={fleet.veiculos}
+          clientes={fleet.clientes}
+          vendasRelacao={fleet.vendasRelacao}
+          saveVendaRelacao={fleet.saveVendaRelacao}
+          saveCliente={fleet.saveCliente}
+          removeCliente={fleet.removeCliente}
+        />
+
+      case 'prestadores':
+        return <Prestadores
+          prestadores={fleet.prestadores}
+          veiculos={fleet.veiculos}
+          savePrestador={fleet.savePrestador}
+          removePrestador={fleet.removePrestador}
+        />
+
+      case 'historico':
+        return <Historico veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>
+
+      case 'usuarios':
+        return <Usuarios />
+
+      default:
+        return <KPIs veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas}/>
     }
   }
 
-  const badgeRole = ROLE_BADGE[role] || ROLE_BADGE.visualizador
-  const isDesktop = bp === 'desktop'
-  const isMobile  = bp === 'mobile'
-
-  // ── Layout Desktop/Tablet ─────────────────────────────────────────────────
+  // ── Layout Desktop / Tablet ──────────────────────────────────────────────
   if (!isMobile) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', background: C.bg,
         fontFamily: "'Syne', sans-serif" }}>
 
-        {/* Sidebar */}
         <aside style={s.sidebar}>
           <div style={s.sidebarLogo}>
             <span style={{ fontSize: 22 }}>🚛</span>
@@ -126,7 +147,6 @@ export default function App() {
           </div>
         </aside>
 
-        {/* Conteúdo */}
         <main style={{ flex: 1, overflow: 'auto' }}>
           {renderPagina()}
         </main>
@@ -134,7 +154,7 @@ export default function App() {
     )
   }
 
-  // ── Layout Mobile ─────────────────────────────────────────────────────────
+  // ── Layout Mobile ────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh',
       background: C.bg, fontFamily: "'Syne', sans-serif" }}>
@@ -164,9 +184,7 @@ export default function App() {
           <button
             key={item.id}
             onClick={() => setPagina(item.id)}
-            style={paginaAtual === item.id
-              ? {...s.bottomItem, ...s.bottomItemAtivo}
-              : s.bottomItem}
+            style={paginaAtual === item.id ? {...s.bottomItem, ...s.bottomItemAtivo} : s.bottomItem}
           >
             <span style={{ fontSize: 20 }}>{item.icon}</span>
             <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.03em' }}>
@@ -179,7 +197,6 @@ export default function App() {
   )
 }
 
-// ─── Estilos ──────────────────────────────────────────────────────────────────
 const s = {
   sidebar: {
     width: 220, minWidth: 220,
@@ -222,8 +239,6 @@ const s = {
     border: 'none', background: 'transparent', color: C.muted,
     fontSize: 13, fontFamily: "'Syne', sans-serif", cursor: 'pointer', width: '100%',
   },
-
-  // Mobile
   mobileHeader: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '12px 16px', background: C.nav,
