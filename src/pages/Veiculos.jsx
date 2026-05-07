@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
-import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, progressoProcesso } from '../lib/constants'
+import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, progressoProcesso } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
 
 function nomeVeiculo(v) {
@@ -186,6 +186,41 @@ export default function Veiculos({
                     </div>
                   ))}
                 </div>
+                {/* Custo atual (compra + manutenção + custos fixos) */}
+                {(() => {
+                  const custoMnt = custoV(vAtual)
+                  const custoFx  = custoFixos(vAtual)
+                  const total    = (vAtual.valor_compra||0) + custoMnt + custoFx
+                  const itens    = [
+                    ['Compra',      vAtual.valor_compra||0, C.amber],
+                    ...(custoMnt > 0 ? [['Manutenção', custoMnt, C.orange]] : []),
+                    ...(custoFx  > 0 ? [['Docs/Fixos', custoFx,  '#fb923c']] : []),
+                  ]
+                  if (total === 0) return null
+                  return (
+                    <div style={{ background:`${C.red}10`, border:`1px solid ${C.red}33`, borderRadius:8, padding:'12px 14px', marginBottom:12 }}>
+                      <div style={{ fontSize:10, color:C.muted, fontWeight:700, marginBottom:8 }}>💸 CUSTO ATUAL DO VEÍCULO</div>
+                      <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
+                        {itens.map(([l, v, c]) => (
+                          <div key={l} style={{ background:C.surface, borderRadius:6, padding:'4px 10px', fontSize:11 }}>
+                            <span style={{ color:C.muted }}>{l}: </span>
+                            <span style={{ color:c, fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize:20, fontWeight:900, color:C.red, fontFamily:"'JetBrains Mono',monospace" }}>
+                        {fmtR(total)}
+                      </div>
+                      {vAtual.valor_anuncio > 0 && (
+                        <div style={{ fontSize:11, color: vAtual.valor_anuncio > total ? C.green : C.red, marginTop:4, fontWeight:700 }}>
+                          {vAtual.valor_anuncio > total
+                            ? `▲ Margem estimada: ${fmtR(vAtual.valor_anuncio - total)}`
+                            : `▼ Anúncio abaixo do custo: ${fmtR(total - vAtual.valor_anuncio)}`}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {vAtual.valor_fipe > 0 && vAtual.valor_anuncio > 0 && (()=>{
                   const diff = vAtual.valor_anuncio - vAtual.valor_fipe
@@ -290,9 +325,10 @@ export default function Veiculos({
                 ['Custo Peças',     (vAtual.servicos||[]).reduce((s,m)=>s+(m.custo_pecas||0),0), C.blue],
                 ['Mão de Obra',     (vAtual.servicos||[]).reduce((s,m)=>s+(m.custo_mao||0),0),   C.green],
                 ['Outros',          (vAtual.servicos||[]).reduce((s,m)=>s+(m.outros||0),0),       '#22d4dd'],
-                ['Total Manutenção',custoV(vAtual),                                               C.amber],
-                ['Valor de Compra', vAtual.valor_compra||0,                                       '#a78bfa'],
-                ['Custo Total',     (vAtual.valor_compra||0)+custoV(vAtual),                      C.red],
+                ['Total Manutenção',custoV(vAtual),                                                    C.amber],
+                ['Docs / Fixos',   custoFixos(vAtual),                                               '#fb923c'],
+                ['Valor de Compra', vAtual.valor_compra||0,                                           '#a78bfa'],
+                ['Custo Total',     (vAtual.valor_compra||0)+custoV(vAtual)+custoFixos(vAtual),       C.red],
               ].map(([l,val,c])=>(
                 <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:'14px 16px', borderTop:`3px solid ${c}` }}>
                   <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>{l}</div>
@@ -402,7 +438,7 @@ export default function Veiculos({
                 <div style={{ textAlign:'right' }}>
                   {proc
                     ? <div style={{ fontWeight:700, color:C.purple, fontSize:14, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(proc.valor_venda)}</div>
-                    : <div style={{ fontWeight:700, color:C.amber, fontSize:14, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(v.valor_compra)}</div>
+                    : <div style={{ fontWeight:700, color:C.amber, fontSize:14, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(v.valor_anuncio || v.valor_compra)}</div>
                   }
                   {custoMnt > 0 && <div style={{ fontSize:11, color:C.muted }}>Mnt: {fmtR(custoMnt)}</div>}
                 </div>
