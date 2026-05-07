@@ -193,6 +193,93 @@ export async function deleteVendaRelacao(id) {
   if (error) throw error
 }
 
+/* ── PROCESSOS DE VENDA (v3.9) ──────────────────────────────────────────── */
+export async function getProcessosVenda() {
+  const { data, error } = await supabase
+    .from('processos_venda')
+    .select('*')
+    .order('criado_em', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function upsertProcessoVenda(processo) {
+  const { id, veiculo, ...payload } = processo
+  const { data, error } = id
+    ? await supabase.from('processos_venda').update(payload).eq('id', id).select().single()
+    : await supabase.from('processos_venda').insert(payload).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteProcessoVenda(id) {
+  const { error } = await supabase.from('processos_venda').delete().eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * Conclui o processo: marca como concluído, muda veículo para "vendido",
+ * cria registro de venda e, se houver troca, insere novo veículo no estoque.
+ */
+export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
+  // 1. Processo → concluido
+  const { error: e1 } = await supabase
+    .from('processos_venda')
+    .update({ status: 'concluido' })
+    .eq('id', processoId)
+  if (e1) throw e1
+
+  // 2. Veículo → vendido + dados do comprador
+  const { error: e2 } = await supabase
+    .from('veiculos')
+    .update({
+      status:         'vendido',
+      valor_venda:    processo.valor_venda,
+      data_venda:     new Date().toISOString().split('T')[0],
+      comprador_nome: processo.comprador_nome,
+      comprador_doc:  processo.comprador_doc || null,
+      vendedor_nome:  processo.vendedor_nome || null,
+      comissao_pct:   processo.comissao_pct  || 0,
+    })
+    .eq('id', veiculo.id)
+  if (e2) throw e2
+
+  // 3. Veículo em troca → entra no estoque como "pendente"
+  if (['troca','troca_financiado'].includes(processo.forma_pagamento) && processo.troca_placa) {
+    const { error: e3 } = await supabase.from('veiculos').insert({
+      placa:       processo.troca_placa.toUpperCase(),
+      marca_nome:  processo.troca_marca  || '',
+      modelo_nome: processo.troca_modelo || '',
+      modelo:      processo.troca_modelo || '',
+      ano_modelo:  processo.troca_ano    || '',
+      km:          processo.troca_km     || 0,
+      cor:         (processo.troca_cor   || '').toUpperCase(),
+      valor_compra: processo.troca_valor || 0,
+      status:      'pendente',
+      data_entrada: new Date().toISOString().split('T')[0],
+      obs:         `RECEBIDO EM TROCA — PROC. #${processoId}`,
+    })
+    if (e3) throw e3
+  }
+}
+
+/**
+ * Cancela o processo: reverte veículo ao status anterior.
+ */
+export async function cancelarProcessoVenda({ processoId, veiculoId, statusAnterior }) {
+  const { error: e1 } = await supabase
+    .from('processos_venda')
+    .update({ status: 'cancelado' })
+    .eq('id', processoId)
+  if (e1) throw e1
+
+  const { error: e2 } = await supabase
+    .from('veiculos')
+    .update({ status: statusAnterior || 'pronto' })
+    .eq('id', veiculoId)
+  if (e2) throw e2
+}
+
 export async function registrarVenda({ veiculo_id, cliente, valor_venda, data_venda, garantia_dias = 90 }) {
   let clienteId = cliente.id
 

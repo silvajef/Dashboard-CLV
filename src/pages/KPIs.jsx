@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
-import { C, fmtR, fmtPct, fmtDias, custoV, diasNoEstoque } from '../lib/constants'
+import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
 
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
 const mono = { fontFamily: "'JetBrains Mono',monospace" }
 
-export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
+export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [] }) {
   const [periodo, setPeriodo] = useState('total')
   const [secao, setSecao]     = useState('overview')
   const [editMetas, setEdit]  = useState(false)
@@ -105,13 +105,75 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas }) {
       </div>
 
       {/* Sub-nav */}
-      <div style={{display:'flex',gap:2,borderBottom:`1px solid ${C.border}`,marginBottom:24}}>
+      <div style={{display:'flex',gap:2,borderBottom:`1px solid ${C.border}`,marginBottom:24,flexWrap:'wrap'}}>
         {navBtn('overview','Visão Geral','⬡')}
+        {navBtn('processos','Processos','🏷')}
         {navBtn('giro','Giro','↻')}
         {navBtn('rentabilidade','Rentabilidade','◈')}
         {navBtn('custos','Custos','⬡')}
         {navBtn('metas','Metas','◎')}
       </div>
+
+      {/* ── PROCESSOS EM ANDAMENTO ── */}
+      {secao==='processos' && (()=>{
+        const fpLabel = v => ({'avista':'À Vista','financiado':'Financiado','troca':'Troca','troca_financiado':'Troca+Fin.'})[v]||v
+        const progresso = etapas => { const t=etapas.length; const c=etapas.filter(e=>e.concluido).length; return {c,t,pct:t>0?Math.round((c/t)*100):0} }
+        const emAndamento = processos.filter(p=>p.status==='em_andamento')
+        return (
+          <div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24}}>
+              {[
+                {label:'Em Andamento',value:emAndamento.length,                                color:C.purple,icon:'🏷'},
+                {label:'Concluídos',  value:processos.filter(p=>p.status==='concluido').length,color:C.green, icon:'✅'},
+                {label:'Cancelados',  value:processos.filter(p=>p.status==='cancelado').length,color:C.red,   icon:'✕'},
+              ].map(k=>(
+                <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
+                  <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.icon} {k.label}</div>
+                  <div style={{...mono,fontSize:28,fontWeight:900,color:k.color}}>{k.value}</div>
+                </div>
+              ))}
+            </div>
+            {!emAndamento.length
+              ? <div style={{textAlign:'center',color:C.muted,padding:60,background:C.card,borderRadius:12}}>Nenhum processo de venda em andamento.</div>
+              : emAndamento.map(p=>{
+                  const {c,t,pct} = progresso(p.etapas||[])
+                  const vei = veiculos.find(v=>v.id===p.veiculo_id)
+                  const cor = pct===100?C.green:pct>=60?C.amber:C.purple
+                  return (
+                    <div key={p.id} style={{background:C.card,border:`1px solid ${C.purple}33`,borderRadius:12,padding:16,marginBottom:10,borderLeft:`4px solid ${C.purple}`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10,flexWrap:'wrap',gap:8}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:14}}>
+                            {vei?`${vei.marca_nome||''} ${vei.modelo_nome||vei.modelo||''}`:`Veículo #${p.veiculo_id}`}
+                            {vei?.placa&&<span style={{marginLeft:8,fontSize:11,color:C.muted,fontFamily:'monospace'}}>{vei.placa}</span>}
+                          </div>
+                          <div style={{fontSize:12,color:C.muted,marginTop:2}}>
+                            {p.comprador_nome||'—'} · {fpLabel(p.forma_pagamento)} ·&nbsp;
+                            <span style={{...mono,color:C.amber,fontWeight:700}}>{fmtR(p.valor_venda)}</span>
+                          </div>
+                        </div>
+                        <div style={{textAlign:'right'}}>
+                          <div style={{...mono,fontSize:20,fontWeight:900,color:cor}}>{pct}%</div>
+                          <div style={{fontSize:10,color:C.muted}}>{c}/{t} etapas</div>
+                        </div>
+                      </div>
+                      <div style={{background:C.border,borderRadius:4,height:6,overflow:'hidden',marginBottom:10}}>
+                        <div style={{width:`${pct}%`,background:cor,height:'100%',borderRadius:4}}/>
+                      </div>
+                      <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+                        {(p.etapas||[]).map((e,i)=>(
+                          <div key={i} style={{background:e.concluido?`${C.green}20`:C.surface,border:`1px solid ${e.concluido?C.green+'44':C.border}`,borderRadius:6,padding:'3px 9px',fontSize:10,color:e.concluido?C.green:C.muted,fontWeight:e.concluido?700:400}}>
+                            {e.concluido?'✓ ':''}{e.icon} {e.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+            }
+          </div>
+        )
+      })()}
 
       {/* ── VISÃO GERAL ── */}
       {secao==='overview' && (

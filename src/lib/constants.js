@@ -16,7 +16,42 @@ export const STATUS_VEICULO_CFG = {
   pendente:   { label: 'Revisão Pendente', color: '#f59e0b', icon: '⏳' },
   manutencao: { label: 'Em Manutenção',    color: '#4f8ef7', icon: '⚙️' },
   pronto:     { label: 'Pronto p/ Venda',  color: '#22d3a0', icon: '✓'  },
-  vendido:    { label: 'Vendido',           color: '#a78bfa', icon: '🏷' },
+  em_venda:   { label: 'Em Venda',         color: '#a78bfa', icon: '🏷' },
+  vendido:    { label: 'Vendido',           color: '#636b85', icon: '✅' },
+}
+
+// ─── Processo de Venda (v3.9) ─────────────────────────────────────────────────
+
+/** Etapas fixas do processo de venda. condicional=true → só aparece se financiado */
+export const ETAPAS_PROCESSO = [
+  { tipo:'financiamento', label:'Financiamento Aprovado',       icon:'🏦', condicional:true  },
+  { tipo:'contrato',      label:'Contrato Assinado',            icon:'📝', condicional:false },
+  { tipo:'revisao',       label:'Revisão Mecânica',             icon:'🔧', condicional:false },
+  { tipo:'vistoria',      label:'Vistoria Cautelar / Transferência', icon:'🔍', condicional:false },
+  { tipo:'documentacao',  label:'Documentação / Transferência', icon:'📋', condicional:false },
+  { tipo:'entrega',       label:'Entrega do Veículo',           icon:'🚗', condicional:false },
+]
+
+export const FORMAS_PAGAMENTO = [
+  { value:'avista',           label:'À Vista'                },
+  { value:'financiado',       label:'Financiado'             },
+  { value:'troca',            label:'Troca'                  },
+  { value:'troca_financiado', label:'Troca + Financiamento'  },
+]
+
+/** Cria o array de etapas inicial baseado na forma de pagamento */
+export function criarEtapas(forma_pagamento) {
+  const temFinanciamento = ['financiado','troca_financiado'].includes(forma_pagamento)
+  return ETAPAS_PROCESSO
+    .filter(e => !e.condicional || temFinanciamento)
+    .map(e => ({ tipo:e.tipo, label:e.label, icon:e.icon, concluido:false, concluido_em:null, obs:'' }))
+}
+
+/** Progresso do processo: {concluidas, total, pct} */
+export function progressoProcesso(etapas = []) {
+  const total = etapas.length
+  const concluidas = etapas.filter(e => e.concluido).length
+  return { concluidas, total, pct: total > 0 ? Math.round((concluidas/total)*100) : 0 }
 }
 export const STATUS_SERV_CFG = {
   pendente:  { label: 'Pendente',     color: '#f59e0b' },
