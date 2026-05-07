@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
-import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, progressoProcesso } from '../lib/constants'
+import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, getCf, progressoProcesso } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
 
 function nomeVeiculo(v) {
@@ -186,36 +186,57 @@ export default function Veiculos({
                     </div>
                   ))}
                 </div>
-                {/* Custo atual (compra + manutenção + custos fixos) */}
+                {/* Custo atual completo (compra + manutenção + custos fixos detalhados) */}
                 {(() => {
+                  const cf       = getCf(vAtual)
                   const custoMnt = custoV(vAtual)
                   const custoFx  = custoFixos(vAtual)
                   const total    = (vAtual.valor_compra||0) + custoMnt + custoFx
-                  const itens    = [
-                    ['Compra',      vAtual.valor_compra||0, C.amber],
-                    ...(custoMnt > 0 ? [['Manutenção', custoMnt, C.orange]] : []),
-                    ...(custoFx  > 0 ? [['Docs/Fixos', custoFx,  '#fb923c']] : []),
-                  ]
                   if (total === 0) return null
+
+                  // Linhas detalhadas
+                  const linhas = [
+                    { label:'Valor de Compra',  val: vAtual.valor_compra||0, cor: C.amber,   sempre: true },
+                    { label:'Manutenção',        val: custoMnt,               cor: C.orange,  sempre: false },
+                    { label:'IPVA',              val: cf?.ipva||0,            cor: '#fb923c', sempre: false },
+                    { label:'Licenciamento',     val: cf?.licenciamento||0,   cor: '#fb923c', sempre: false },
+                    { label:'Transferência',     val: cf?.transferencia||0,   cor: '#fb923c', sempre: false },
+                    { label:'Multas',            val: cf?.multas||0,          cor: '#fb923c', sempre: false },
+                    ...(cf?.outros_valor > 0
+                      ? [{ label: cf.outros_desc || 'Outros', val: cf.outros_valor, cor: '#fb923c', sempre: false }]
+                      : []),
+                  ].filter(l => l.sempre || l.val > 0)
+
+                  const margem = vAtual.valor_anuncio > 0 ? vAtual.valor_anuncio - total : null
+
                   return (
-                    <div style={{ background:`${C.red}10`, border:`1px solid ${C.red}33`, borderRadius:8, padding:'12px 14px', marginBottom:12 }}>
-                      <div style={{ fontSize:10, color:C.muted, fontWeight:700, marginBottom:8 }}>💸 CUSTO ATUAL DO VEÍCULO</div>
-                      <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
-                        {itens.map(([l, v, c]) => (
-                          <div key={l} style={{ background:C.surface, borderRadius:6, padding:'4px 10px', fontSize:11 }}>
-                            <span style={{ color:C.muted }}>{l}: </span>
-                            <span style={{ color:c, fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(v)}</span>
-                          </div>
-                        ))}
+                    <div style={{ background:`${C.red}10`, border:`1px solid ${C.red}33`, borderRadius:8, padding:'14px', marginBottom:12 }}>
+                      <div style={{ fontSize:10, color:C.muted, fontWeight:700, letterSpacing:1, marginBottom:10 }}>💸 CUSTO ATUAL DO VEÍCULO</div>
+
+                      {/* Linhas de custo */}
+                      {linhas.map(({ label, val, cor }) => (
+                        <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 0', borderBottom:`1px solid ${C.border}` }}>
+                          <span style={{ fontSize:12, color:C.muted }}>{label}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:cor, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(val)}</span>
+                        </div>
+                      ))}
+
+                      {/* Total */}
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
+                        <span style={{ fontSize:13, fontWeight:700, color:C.text }}>TOTAL GASTO</span>
+                        <span style={{ fontSize:22, fontWeight:900, color:C.red, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(total)}</span>
                       </div>
-                      <div style={{ fontSize:20, fontWeight:900, color:C.red, fontFamily:"'JetBrains Mono',monospace" }}>
-                        {fmtR(total)}
-                      </div>
-                      {vAtual.valor_anuncio > 0 && (
-                        <div style={{ fontSize:11, color: vAtual.valor_anuncio > total ? C.green : C.red, marginTop:4, fontWeight:700 }}>
-                          {vAtual.valor_anuncio > total
-                            ? `▲ Margem estimada: ${fmtR(vAtual.valor_anuncio - total)}`
-                            : `▼ Anúncio abaixo do custo: ${fmtR(total - vAtual.valor_anuncio)}`}
+
+                      {/* Margem vs anúncio */}
+                      {margem !== null && (
+                        <div style={{ marginTop:8, padding:'7px 10px', borderRadius:6,
+                          background: margem >= 0 ? `${C.green}15` : `${C.red}20`,
+                          border: `1px solid ${margem >= 0 ? C.green : C.red}44` }}>
+                          <span style={{ fontSize:12, fontWeight:700, color: margem >= 0 ? C.green : C.red }}>
+                            {margem >= 0
+                              ? `▲ Margem estimada: ${fmtR(margem)} (anúncio: ${fmtR(vAtual.valor_anuncio)})`
+                              : `▼ Anúncio abaixo do custo: ${fmtR(Math.abs(margem))}`}
+                          </span>
                         </div>
                       )}
                     </div>

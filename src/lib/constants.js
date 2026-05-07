@@ -139,9 +139,19 @@ export function displayParaIso(display) {
 export const custoV = v =>
   (v.servicos || []).reduce((s, m) => s + (m.custo_pecas||0) + (m.custo_mao||0) + (m.outros||0), 0)
 
+/**
+ * getCf — extrai o objeto de custos_fixos independente de vir como
+ * array (JOIN do Supabase) ou como objeto direto.
+ */
+export const getCf = v => {
+  const raw = v.custos_fixos
+  if (!raw) return null
+  return Array.isArray(raw) ? (raw[0] || null) : raw
+}
+
 /** custoFixos — soma custos fixos (IPVA, licenciamento, transferência, multas, outros) */
 export const custoFixos = v => {
-  const cf = v.custos_fixos
+  const cf = getCf(v)
   if (!cf) return 0
   return (cf.ipva||0) + (cf.licenciamento||0) + (cf.transferencia||0) +
          (cf.multas||0) + (cf.outros_valor||0)
