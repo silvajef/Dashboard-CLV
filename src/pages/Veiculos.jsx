@@ -4,6 +4,7 @@ import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
 import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, getCf, progressoProcesso } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
+import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
 
 function nomeVeiculo(v) {
   const marca  = v.marca_nome  || ''
@@ -92,6 +93,7 @@ export default function Veiculos({
           </div>
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             <Btn variant="secondary" small onClick={()=>setModal({type:'veiculo',data:vAtual})}>✏️ Editar</Btn>
+            <Btn variant="ghost" small onClick={()=>abrirPDF(fichaVeiculo(vAtual))}>📄 Ficha PDF</Btn>
             {/* Botão de venda: só para não-vendido e não-em_venda */}
             {vAtual.status !== 'vendido' && vAtual.status !== 'em_venda' && (
               <Btn variant="success" small onClick={()=>setModal({type:'iniciar_venda',data:vAtual})}>🏷 Registrar Venda</Btn>
@@ -386,7 +388,10 @@ export default function Veiculos({
           <h2 style={{ margin:'0 0 4px', fontSize:22, fontWeight:900 }}>Estoque Ativo</h2>
           <p style={{ margin:0, color:C.muted, fontSize:13 }}>{ativos.length} veículo(s) cadastrado(s)</p>
         </div>
-        <Btn onClick={()=>setModal({type:'veiculo',data:null})}>+ Novo Veículo</Btn>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+          <Btn variant="ghost" onClick={()=>abrirPDF(relatorioEstoque(filtrados))}>📊 Exportar PDF</Btn>
+          <Btn onClick={()=>setModal({type:'veiculo',data:null})}>+ Novo Veículo</Btn>
+        </div>
       </div>
       {erro && <ErrorBanner message={erro}/>}
 

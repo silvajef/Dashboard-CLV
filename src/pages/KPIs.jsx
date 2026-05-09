@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
+import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
 const mono = { fontFamily: "'JetBrains Mono',monospace" }
@@ -90,17 +91,21 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
   return (
     <div>
       {/* Controles */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12}}>
         <div>
           <h2 style={{margin:'0 0 4px',fontSize:22,fontWeight:900}}>Dashboard KPI</h2>
           <p style={{margin:0,color:C.muted,fontSize:13}}>Indicadores de performance do estoque</p>
         </div>
-        <div style={{display:'flex',gap:3,background:C.surface,borderRadius:8,padding:3,border:`1px solid ${C.border}`}}>
-          {[['30','30d'],['60','60d'],['90','90d'],['total','Total']].map(([v,l])=>(
-            <button key={v} onClick={()=>setPeriodo(v)} style={{background:periodo===v?C.amber:'transparent',color:periodo===v?'#000':C.muted,border:'none',borderRadius:6,padding:'5px 13px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Syne',sans-serif"}}>
-              {l}
-            </button>
-          ))}
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <Btn variant="ghost" small onClick={()=>abrirPDF(relatorioVendas(veiculos, periodo))}>📊 Relatório Vendas</Btn>
+          <Btn variant="ghost" small onClick={()=>abrirPDF(relatorioKPI(veiculos, metas, periodo))}>📈 Relatório KPI</Btn>
+          <div style={{display:'flex',gap:3,background:C.surface,borderRadius:8,padding:3,border:`1px solid ${C.border}`}}>
+            {[['30','30d'],['60','60d'],['90','90d'],['total','Total']].map(([v,l])=>(
+              <button key={v} onClick={()=>setPeriodo(v)} style={{background:periodo===v?C.amber:'transparent',color:periodo===v?'#000':C.muted,border:'none',borderRadius:6,padding:'5px 13px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Syne',sans-serif"}}>
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
