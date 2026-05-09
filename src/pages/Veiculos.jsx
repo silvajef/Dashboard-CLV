@@ -365,14 +365,11 @@ export default function Veiculos({
         {/* Modais do detalhe */}
         {modal?.type==='veiculo'       && <ModalVeiculo data={modal.data} onSave={d=>handle(saveVeiculo,{...d,servicos:undefined})} onClose={()=>setModal(null)} loading={saving}/>}
         {modal?.type==='iniciar_venda' && <ModalIniciarVenda veiculo={modal.data}
-          onSave={async dados => {
-            // 1. Criar processo
+          onSave={dados => handle(async () => {
             await saveProcesso(dados)
-            // 2. Mudar status do veículo para em_venda
             await saveVeiculo({ ...vAtual, status:'em_venda', servicos:undefined, custos_fixos:undefined })
-            setModal(null)
             setVTab('processo')
-          }}
+          })}
           onClose={()=>setModal(null)} loading={saving}/>}
         {modal?.type==='servico'       && <ModalServico data={modal.data} veiculoId={vAtual.id} prestadores={prestadores} onSave={d=>handle(saveServico,d)} onClose={()=>setModal(null)} loading={saving}/>}
         {modal?.type==='del_veiculo'   && <ModalConfirm title="Excluir Veículo" message={`Excluir ${nomeVeiculo(vAtual)}? Esta ação não pode ser desfeita.`} onConfirm={()=>handle(removeVeiculo,vAtual.id).then(()=>setVSel(null))} onClose={()=>setModal(null)} loading={saving}/>}
