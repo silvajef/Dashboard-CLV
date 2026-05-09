@@ -48,11 +48,14 @@ export default function App() {
 function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile, isTablet }) {
   const fleet = useFleetData()
   const jaCarregou = useRef(false)
+
+  // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
+  const [abrirVeiculoId, setAbrirVeiculoId] = useState(null)
+
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
 
   // Navegação direta para o processo de um veículo a partir do KPI
-  const [abrirVeiculoId, setAbrirVeiculoId] = useState(null)
   const irParaProcesso = (veiculoId) => {
     setAbrirVeiculoId(veiculoId)
     setAba('veiculos')
