@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
@@ -25,6 +25,7 @@ export default function Veiculos({
   saveVeiculo, removeVeiculo,
   saveServico, removeServico,
   saveProcesso, concluirProcesso, cancelarProcesso,
+  abrirVeiculoId, onAbrirVeiculoHandled,
 }) {
   const { isMobile } = useBreakpoint()
   const [vSel,   setVSel]   = useState(null)
@@ -33,6 +34,17 @@ export default function Veiculos({
   const [saving, setSaving] = useState(false)
   const [erro,   setErro]   = useState(null)
   const [filtro, setFiltro] = useState({ status:'todos', busca:'' })
+
+  // Navegação direta vinda do KPI: abre o veículo e vai direto à aba de processo
+  useEffect(() => {
+    if (!abrirVeiculoId || !veiculos.length) return
+    const v = veiculos.find(x => x.id === abrirVeiculoId)
+    if (v) {
+      setVSel(v)
+      setVTab('processo')
+      onAbrirVeiculoHandled?.()
+    }
+  }, [abrirVeiculoId, veiculos])
 
   // Veículos ativos (tudo menos vendido)
   const ativos    = veiculos.filter(v => v.status !== 'vendido')

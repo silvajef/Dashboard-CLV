@@ -6,7 +6,7 @@ import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
 const mono = { fontFamily: "'JetBrains Mono',monospace" }
 
-export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [] }) {
+export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso }) {
   const [periodo, setPeriodo] = useState('total')
   const [secao, setSecao]     = useState('overview')
   const [editMetas, setEdit]  = useState(false)
@@ -144,13 +144,26 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                   const {c,t,pct} = progresso(p.etapas||[])
                   const vei = veiculos.find(v=>v.id===p.veiculo_id)
                   const cor = pct===100?C.green:pct>=60?C.amber:C.purple
+                  const podeNavegar = !!onVerProcesso
                   return (
-                    <div key={p.id} style={{background:C.card,border:`1px solid ${C.purple}33`,borderRadius:12,padding:16,marginBottom:10,borderLeft:`4px solid ${C.purple}`}}>
+                    <div key={p.id}
+                      onClick={() => onVerProcesso?.(p.veiculo_id)}
+                      style={{
+                        background:C.card, border:`1px solid ${C.purple}33`,
+                        borderRadius:12, padding:16, marginBottom:10,
+                        borderLeft:`4px solid ${C.purple}`,
+                        cursor: podeNavegar ? 'pointer' : 'default',
+                        transition:'border-color .15s, box-shadow .15s',
+                      }}
+                      onMouseEnter={e => { if(podeNavegar) { e.currentTarget.style.borderColor=C.purple; e.currentTarget.style.boxShadow=`0 0 0 1px ${C.purple}44` } }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor=`${C.purple}33`; e.currentTarget.style.boxShadow='none' }}
+                    >
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10,flexWrap:'wrap',gap:8}}>
                         <div>
-                          <div style={{fontWeight:700,fontSize:14}}>
+                          <div style={{fontWeight:700,fontSize:14,display:'flex',alignItems:'center',gap:8}}>
                             {vei?`${vei.marca_nome||''} ${vei.modelo_nome||vei.modelo||''}`:`Veículo #${p.veiculo_id}`}
-                            {vei?.placa&&<span style={{marginLeft:8,fontSize:11,color:C.muted,fontFamily:'monospace'}}>{vei.placa}</span>}
+                            {vei?.placa&&<span style={{fontSize:11,color:C.muted,fontFamily:'monospace'}}>{vei.placa}</span>}
+                            {podeNavegar && <span style={{fontSize:10,color:C.purple,fontWeight:700,background:`${C.purple}18`,padding:'2px 8px',borderRadius:20}}>→ Ver processo</span>}
                           </div>
                           <div style={{fontSize:12,color:C.muted,marginTop:2}}>
                             {p.comprador_nome||'—'} · {fpLabel(p.forma_pagamento)} ·&nbsp;

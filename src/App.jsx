@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useFleetData } from './hooks/useFleetData'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
@@ -50,6 +50,13 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
   const jaCarregou = useRef(false)
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
+
+  // Navegação direta para o processo de um veículo a partir do KPI
+  const [abrirVeiculoId, setAbrirVeiculoId] = useState(null)
+  const irParaProcesso = (veiculoId) => {
+    setAbrirVeiculoId(veiculoId)
+    setAba('veiculos')
+  }
 
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS] : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
@@ -147,11 +154,12 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
       <main style={{ maxWidth:1400, margin:'0 auto', padding: isMobile ? '16px 12px 80px' : '28px 24px' }}>
         {fleet.error && <ErrorBanner message={fleet.error} onRetry={fleet.reload}/>}
 
-        {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos}/>}
+        {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso}/>}
         {abaAtual==='veiculos'    && <Veiculos     veiculos={fleet.veiculos} prestadores={fleet.prestadores} processos={fleet.processos}
                                                    saveVeiculo={fleet.saveVeiculo} removeVeiculo={fleet.removeVeiculo}
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
-                                                   saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}/>}
+                                                   saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
+                                                   abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
