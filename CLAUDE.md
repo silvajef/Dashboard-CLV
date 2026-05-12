@@ -35,6 +35,32 @@
 - Inject dependencies through constructor/parameter, not global/import.
 - Wrap third-party libs behind a thin interface owned by this project.
 
+## Project structure
+
+Entry point: `index.html` → `src/main.jsx` → `src/App.jsx`.
+**Todo código da aplicação vive em `src/`.** Arquivos JS/JSX na raiz são ignorados pelo build.
+
+```
+src/
+├── main.jsx              ← entrada do Vite
+├── App.jsx               ← layout, nav, roteamento por aba
+├── components/           ← componentes reutilizáveis
+├── hooks/                ← hooks de estado (useFleetData, useAnuncios, useLeads…)
+├── lib/
+│   ├── api.js            ← CRUD Supabase principal
+│   ├── api-anuncios.js   ← CRUD anúncios e integrações OAuth
+│   ├── api-leads.js      ← CRUD leads e atividades
+│   ├── plataformas/      ← adaptadores por plataforma (ML real, stubs: OLX, iCarros…)
+│   ├── constants.js      ← cores (C), formatadores, constantes de status
+│   └── supabase.js       ← cliente Supabase
+└── pages/                ← uma página por aba do nav
+```
+
+Ao adicionar uma nova aba:
+1. Crie `src/pages/NomePagina.jsx`
+2. Importe e adicione em `TABS_BASE` dentro de `src/App.jsx`
+3. Adicione o case de renderização no bloco `{abaAtual===...}` do `<main>`
+
 ## Structure
 
 - Follow the framework's convention (Rails, Django, Next.js, etc.).
