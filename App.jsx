@@ -15,8 +15,8 @@ import { useBreakpoint } from './lib/responsive'
 const NAV_BASE = [
   { id: 'kpis',        label: 'Dashboard',   icon: '📊', roles: ['admin','operador','visualizador'] },
   { id: 'veiculos',    label: 'Estoque',      icon: '🚛', roles: ['admin','operador','visualizador'] },
-  { id: 'anuncios',    label: 'Anúncios',     icon: '📣', roles: ['admin','operador'] },
-  { id: 'leads',       label: 'Leads',        icon: '🎯', roles: ['admin','operador'] },
+  { id: 'anuncios',    label: 'Anúncios',     icon: '📣', roles: ['admin','operador','visualizador'] },
+  { id: 'leads',       label: 'Leads',        icon: '🎯', roles: ['admin','operador','visualizador'] },
   { id: 'posvenda',    label: 'Pós-Venda',    icon: '🛡', roles: ['admin','operador','visualizador'] },
   { id: 'prestadores', label: 'Prestadores',  icon: '🔧', roles: ['admin','operador','visualizador'] },
   { id: 'historico',   label: 'Histórico',    icon: '📋', roles: ['admin','operador','visualizador'] },
