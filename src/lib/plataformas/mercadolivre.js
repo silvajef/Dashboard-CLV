@@ -27,6 +27,12 @@ const ML_CATEGORIA = import.meta.env.VITE_ML_CATEGORIA || 'MLB271599'
  * @returns {string}
  */
 export function construirUrlAutenticacao(redirectUri) {
+  if (!ML_CLIENT_ID) {
+    throw new Error(
+      'VITE_ML_CLIENT_ID não configurado. ' +
+      'Adicione a variável no Vercel (Settings → Environment Variables) e faça um novo deploy.'
+    )
+  }
   const params = new URLSearchParams({
     response_type: 'token',
     client_id:     ML_CLIENT_ID,
@@ -34,6 +40,15 @@ export function construirUrlAutenticacao(redirectUri) {
     state:         crypto.randomUUID(),
   })
   return `${ML_AUTH_URL}?${params.toString()}`
+}
+
+/**
+ * Retorna a redirect URI que será enviada ao ML.
+ * Deve estar cadastrada EXATAMENTE igual no painel do ML Developers.
+ * @returns {string}
+ */
+export function getRedirectUri() {
+  return `${window.location.origin}/`
 }
 
 /**

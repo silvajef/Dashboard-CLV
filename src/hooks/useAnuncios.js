@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import * as api from '../lib/api-anuncios'
 import { getPlatforma } from '../lib/plataformas/index'
-import { extrairTokenDaUrl } from '../lib/plataformas/mercadolivre'
+import { extrairTokenDaUrl, getRedirectUri } from '../lib/plataformas/mercadolivre'
 
 export function useAnuncios(userId) {
   const [anuncios,    setAnuncios]    = useState([])
@@ -127,7 +127,9 @@ export function useAnuncios(userId) {
   }
 
   function conectar(plataforma) {
-    const redirectUri    = `${window.location.origin}${window.location.pathname}`
+    // Usa sempre a raiz do domínio como redirect URI — deve ser cadastrada
+    // EXATAMENTE assim no painel do ML Developers (sem path, sem trailing slash variável)
+    const redirectUri    = getRedirectUri()
     const { adaptador }  = getPlatforma(plataforma)
     window.location.href = adaptador.construirUrlAutenticacao(redirectUri)
   }

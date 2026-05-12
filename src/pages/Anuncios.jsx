@@ -3,7 +3,10 @@ import { useAnuncios } from '../hooks/useAnuncios'
 import { useAuth } from '../hooks/useAuth'
 import { PLATAFORMAS } from '../lib/plataformas/index'
 import { STATUS_ANUNCIO_CFG } from '../lib/plataformas/types'
+import { getRedirectUri } from '../lib/plataformas/mercadolivre'
 import { C, fmtR } from '../lib/constants'
+
+const ML_CONFIGURADO = !!import.meta.env.VITE_ML_CLIENT_ID
 
 /* ── Estilos base ─────────────────────────────────────────────────────── */
 const s = {
@@ -32,10 +35,43 @@ const s = {
                 fontSize: 12, marginBottom: 12 },
 }
 
+/* ── Aviso de configuração do ML ──────────────────────────────────────── */
+function AvisoConfiguracaoML() {
+  const redirectUri = getRedirectUri()
+  return (
+    <div style={{ background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: 10,
+                  padding: '14px 16px', marginBottom: 20 }}>
+      <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: C.amber }}>
+        ⚠ Mercado Livre não configurado
+      </p>
+      <p style={{ margin: '0 0 10px', fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+        Para conectar o ML, verifique os dois itens abaixo:
+      </p>
+      <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.muted, lineHeight: 2 }}>
+        <li>
+          No <strong style={{ color: C.text }}>Vercel → Settings → Environment Variables</strong>,
+          adicione <code style={{ background: C.card, padding: '1px 6px', borderRadius: 4, color: C.amber }}>VITE_ML_CLIENT_ID</code> e
+          faça um novo deploy.
+        </li>
+        <li>
+          No <strong style={{ color: C.text }}>ML Developers → Seu App → Redirect URIs</strong>,
+          cadastre exatamente:
+          <br />
+          <code style={{ background: C.card, padding: '3px 8px', borderRadius: 4, color: C.green,
+                         display: 'inline-block', marginTop: 4, wordBreak: 'break-all' }}>
+            {redirectUri}
+          </code>
+        </li>
+      </ol>
+    </div>
+  )
+}
+
 /* ── Cartão de conexão de plataforma ──────────────────────────────────── */
 function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar }) {
   const statusColor = conectado && !expirou ? C.green : conectado ? C.amber : C.faint
   const statusLabel = conectado && !expirou ? 'Conectado' : conectado ? 'Token expirado' : 'Desconectado'
+  const mlBloqueado = config.slug === 'mercadolivre' && !ML_CONFIGURADO
 
   return (
     <div style={{ ...s.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -43,14 +79,16 @@ function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar 
         <span style={{ fontSize: 22 }}>{config.emoji}</span>
         <div>
           <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>{config.nome}</p>
-          <span style={{ fontSize: 11, color: statusColor }}>{statusLabel}</span>
+          <span style={{ fontSize: 11, color: mlBloqueado ? C.amber : statusColor }}>
+            {mlBloqueado ? 'Configuração pendente' : statusLabel}
+          </span>
           {!config.implementado && (
             <span style={{ fontSize: 10, color: C.faint, display: 'block' }}>Em breve</span>
           )}
         </div>
       </div>
 
-      {config.implementado && (
+      {config.implementado && !mlBloqueado && (
         conectado
           ? <button style={{ ...s.btn, ...s.btnDanger }} onClick={onDesconectar}>Desconectar</button>
           : <button style={{ ...s.btn, ...s.btnPrimary }} onClick={onConectar}>Conectar</button>
@@ -247,6 +285,9 @@ export default function Anuncios({ veiculos }) {
       {(error || erroAcao) && (
         <div style={{ ...s.erro, marginBottom: 20 }}>{error || erroAcao}</div>
       )}
+
+      {/* Aviso quando ML não está configurado */}
+      {!ML_CONFIGURADO && <AvisoConfiguracaoML />}
 
       {/* Conexões de plataforma */}
       <p style={s.secao}>Plataformas</p>
