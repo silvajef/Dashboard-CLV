@@ -7,12 +7,16 @@ import PosVenda from './pages/PosVenda'
 import Prestadores from './pages/Prestadores'
 import Historico from './pages/Historico'
 import Usuarios from './pages/Usuarios'
+import Anuncios from './pages/Anuncios'
+import Leads from './pages/Leads'
 import { useFleetData } from './hooks/useFleetData'
 import { useBreakpoint } from './lib/responsive'
 
 const NAV_BASE = [
   { id: 'kpis',        label: 'Dashboard',   icon: '📊', roles: ['admin','operador','visualizador'] },
   { id: 'veiculos',    label: 'Estoque',      icon: '🚛', roles: ['admin','operador','visualizador'] },
+  { id: 'anuncios',    label: 'Anúncios',     icon: '📣', roles: ['admin','operador'] },
+  { id: 'leads',       label: 'Leads',        icon: '🎯', roles: ['admin','operador'] },
   { id: 'posvenda',    label: 'Pós-Venda',    icon: '🛡', roles: ['admin','operador','visualizador'] },
   { id: 'prestadores', label: 'Prestadores',  icon: '🔧', roles: ['admin','operador','visualizador'] },
   { id: 'historico',   label: 'Histórico',    icon: '📋', roles: ['admin','operador','visualizador'] },
@@ -85,6 +89,12 @@ export default function App() {
           saveCliente={fleet.saveCliente}
           removeCliente={fleet.removeCliente}
         />
+
+      case 'anuncios':
+        return <Anuncios veiculos={fleet.veiculos} />
+
+      case 'leads':
+        return <Leads veiculos={fleet.veiculos} />
 
       case 'prestadores':
         return <Prestadores
