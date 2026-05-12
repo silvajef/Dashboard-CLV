@@ -11,10 +11,14 @@ import Historico   from './pages/Historico'
 import KPIs        from './pages/KPIs'
 import Login       from './pages/Login'
 import Usuarios    from './pages/Usuarios'
+import Anuncios    from './pages/Anuncios'
+import Leads       from './pages/Leads'
 
 const TABS_BASE = [
   { id:'dashboard',   icon:'📊', label:'KPIs'        },
-  { id:'veiculos',    icon:'🚗', label:'Estoque'      },
+  { id:'veiculos',    icon:'🚛', label:'Estoque'      },
+  { id:'anuncios',    icon:'📣', label:'Anúncios'     },
+  { id:'leads',       icon:'🎯', label:'Leads'        },
   { id:'posvenda',    icon:'🛡', label:'Pós-Venda'    },
   { id:'prestadores', icon:'🔧', label:'Prestadores'  },
   { id:'historico',   icon:'📋', label:'Histórico'    },
@@ -163,6 +167,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}/>}
+        {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}/>}
+        {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
