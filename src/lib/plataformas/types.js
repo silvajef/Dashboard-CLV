@@ -16,6 +16,25 @@
  */
 
 /**
+ * @typedef {Object} AtributoML
+ * @property {string}   id
+ * @property {string}   name
+ * @property {string}   [value_type]
+ * @property {Object[]} [allowed_values]
+ * @property {Object}   [tags]
+ * @property {number}   [relevance]
+ */
+
+/**
+ * @typedef {Object} DadosPublicacao
+ * @property {number}      preco
+ * @property {string[]}    fotos
+ * @property {string}      listing_type_id
+ * @property {string}      [category_id]
+ * @property {AtributoML[]} [atributos]
+ */
+
+/**
  * @typedef {Object} ResultadoPublicacao
  * @property {string} listing_id - ID externo do anúncio na plataforma
  * @property {string} url        - URL pública do anúncio
@@ -37,7 +56,7 @@
  *
  * @typedef {Object} AdaptadorPlataforma
  * @property {(redirectUri: string) => string}                                           construirUrlAutenticacao
- * @property {(token: string, veiculo: Object, preco: number) => Promise<ResultadoPublicacao>} publicarAnuncio
+ * @property {(token: string, veiculo: Object, dados: DadosPublicacao) => Promise<ResultadoPublicacao>} publicarAnuncio
  * @property {(token: string, listingId: string, dados: Object) => Promise<void>}        atualizarAnuncio
  * @property {(token: string, listingId: string) => Promise<void>}                       pausarAnuncio
  * @property {(token: string, listingId: string) => Promise<void>}                       reativarAnuncio

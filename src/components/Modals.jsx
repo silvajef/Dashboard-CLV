@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal, Btn } from './UI'
 import { MoedaInput, UpperInput, SelectFipe, SelectInput, DocInput, DateInput } from './Inputs'
+import { FotoUpload } from './FotoUpload'
 import { useFipe, parseFipeValor } from '../hooks/useFipe'
 import {
   TIPOS_MANUT, COMBUSTIVEIS,
@@ -78,6 +79,8 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
     valor_anuncio:  data?.valor_anuncio || 0,   // NOVO v3.8
   })
 
+  const [fotos, setFotos] = useState(data?.fotos || [])
+
   // Custos fixos — seção separada (banco retorna array na relação)
   const cf0 = Array.isArray(data?.custos_fixos) ? data.custos_fixos[0] : data?.custos_fixos
   const [cf, setCf] = useState({
@@ -126,7 +129,7 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
 
   const handleSave = () => {
     console.log('[ModalVeiculo] SALVANDO:', f)
-    onSave({ ...f, id: data?.id, _custos_fixos: cf })
+    onSave({ ...f, id: data?.id, fotos, _custos_fixos: cf })
   }
 
   const cols3 = isMobile ? '1fr' : '1fr 1fr 1fr'
@@ -260,11 +263,21 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
           options={Object.entries(STATUS_VEICULO_CFG).filter(([k])=>k!=='vendido').map(([k,v])=>({value:k,label:v.label}))}/>
       </div>
 
-      <div style={{ marginBottom:20 }}>
+      <div style={{ marginBottom:16 }}>
         <label style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, display:'block', marginBottom:5 }}>OBSERVAÇÕES</label>
         <textarea value={(f.obs||'').toUpperCase()} onChange={e=>set('obs',e.target.value.toUpperCase())}
           placeholder="INFORMAÇÕES ADICIONAIS..." rows={2}
           style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:'inherit', resize:'vertical', textTransform:'uppercase' }}/>
+      </div>
+
+      {/* ── FOTOS ── */}
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:16, marginBottom:16 }}>
+        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, marginBottom:12 }}>📷 FOTOS DO VEÍCULO</div>
+        <FotoUpload
+          folderId={data?.id || 'novo'}
+          fotos={fotos}
+          onChange={setFotos}
+        />
       </div>
 
       <div style={{ display:'flex', gap:10 }}>

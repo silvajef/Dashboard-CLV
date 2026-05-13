@@ -113,10 +113,10 @@ async function olxImport(accessToken, adList) {
  *
  * @param {string} accessToken
  * @param {Object} veiculo - registro da tabela veiculos
- * @param {number} preco
+ * @param {import('./types.js').DadosPublicacao} dados
  * @returns {Promise<import('./types.js').ResultadoPublicacao>}
  */
-export async function publicarAnuncio(accessToken, veiculo, preco) {
+export async function publicarAnuncio(accessToken, veiculo, dados) {
   const titulo = [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo, veiculo.ano_modelo]
     .filter(Boolean).join(' ').trim()
 
@@ -128,9 +128,9 @@ export async function publicarAnuncio(accessToken, veiculo, preco) {
     Body:      veiculo.obs || `${titulo} — ${veiculo.km || 0} km`,
     Phone:     (veiculo.telefone || '').replace(/\D/g, '') || '00000000000',
     type:      's', // sale
-    price:     Math.round(preco),
+    price:     Math.round(dados.preco),
     zipcode:   (veiculo.cep || '').replace(/\D/g, '') || '',
-    images:    veiculo.fotos || [],
+    images:    dados.fotos || [],
     params: {
       vehicle_brand: veiculo.marca_nome  || '',
       vehicle_model: veiculo.modelo_nome || veiculo.modelo || '',

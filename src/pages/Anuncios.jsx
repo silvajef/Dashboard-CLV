@@ -3,6 +3,7 @@ import { useAnuncios } from '../hooks/useAnuncios'
 import { useAuth } from '../hooks/useAuth'
 import { PLATAFORMAS } from '../lib/plataformas/index'
 import { STATUS_ANUNCIO_CFG } from '../lib/plataformas/types'
+import { ModalPublicarAnuncio } from '../components/ModalPublicarAnuncio'
 import { C, fmtR } from '../lib/constants'
 
 const ML_CONFIGURADO  = !!import.meta.env.VITE_ML_CLIENT_ID
@@ -131,76 +132,6 @@ function BadgeAnuncio({ status }) {
   )
 }
 
-/* ── Modal: publicar/editar anúncio ───────────────────────────────────── */
-function ModalPublicar({ veiculo, anuncioExistente, plataformas, tokenValido, onSalvar, onFechar }) {
-  const [plataforma, setPlataforma] = useState(anuncioExistente?.plataforma || '')
-  const [preco,      setPreco]      = useState(
-    anuncioExistente?.preco_anunciado ?? veiculo?.valor_venda ?? veiculo?.valor_compra ?? ''
-  )
-  const [erro,       setErro]       = useState('')
-  const [salvando,   setSalvando]   = useState(false)
-
-  async function handleSalvar() {
-    if (!plataforma) return setErro('Selecione uma plataforma.')
-    if (!preco || Number(preco) <= 0) return setErro('Informe um preço válido.')
-    if (!tokenValido(plataforma)) return setErro(`Conecte sua conta ${plataforma} antes de publicar.`)
-    setErro('')
-    setSalvando(true)
-    try {
-      await onSalvar(plataforma, Number(preco))
-      onFechar()
-    } catch (e) {
-      setErro(e.message)
-    } finally {
-      setSalvando(false)
-    }
-  }
-
-  const titulo = veiculo
-    ? [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo, veiculo.ano_modelo].filter(Boolean).join(' ')
-    : ''
-
-  return (
-    <div style={s.overlay} onClick={e => e.target === e.currentTarget && onFechar()}>
-      <div style={s.modal}>
-        <h3 style={{ margin: '0 0 4px', color: C.text, fontSize: 16 }}>Publicar Anúncio</h3>
-        <p style={{ margin: '0 0 16px', color: C.muted, fontSize: 12 }}>{titulo}</p>
-
-        {erro && <div style={s.erro}>{erro}</div>}
-
-        <label style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>PLATAFORMA</label>
-        <select
-          value={plataforma}
-          onChange={e => setPlataforma(e.target.value)}
-          style={{ ...s.input, marginBottom: 12, marginTop: 4 }}
-        >
-          <option value=''>Selecione...</option>
-          {plataformas.filter(p => p.implementado).map(p => (
-            <option key={p.slug} value={p.slug}>{p.emoji} {p.nome}</option>
-          ))}
-        </select>
-
-        <label style={{ fontSize: 11, color: C.muted, fontWeight: 700 }}>PREÇO ANUNCIADO (R$)</label>
-        <input
-          type='number'
-          value={preco}
-          onChange={e => setPreco(e.target.value)}
-          style={{ ...s.input, marginBottom: 20, marginTop: 4 }}
-          placeholder='Ex: 85000'
-          min={0}
-        />
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button style={{ ...s.btn, ...s.btnGhost }} onClick={onFechar}>Cancelar</button>
-          <button style={{ ...s.btn, ...s.btnPrimary }} onClick={handleSalvar} disabled={salvando}>
-            {salvando ? 'Publicando...' : 'Publicar'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /* ── Linha de veículo com anúncios por plataforma ─────────────────────── */
 function VeiculoRow({ veiculo, anunciosPorPlataforma, tokenValido, onPublicar, onPausar, onReativar, onFechar }) {
   const titulo = [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo, veiculo.ano_modelo]
@@ -257,7 +188,7 @@ export default function Anuncios({ veiculos }) {
   const {
     anuncios, integracoes, loading, error,
     publicar, pausar, reativar, fechar,
-    conectar, desconectar, tokenValido,
+    conectar, desconectar, tokenValido, integracaoPara,
     processarCallbackOAuth,
   } = useAnuncios(userId)
 
@@ -296,8 +227,8 @@ export default function Anuncios({ veiculos }) {
     catch (e) { setErroAcao(e.message) }
   }
 
-  async function handlePublicar(plataforma, preco) {
-    await publicar(veiculoParaPublicar, plataforma, preco)
+  async function handlePublicar(plataforma, dados) {
+    await publicar(veiculoParaPublicar, plataforma, dados)
   }
 
   if (loading) return (
@@ -353,10 +284,11 @@ export default function Anuncios({ veiculos }) {
       </div>
 
       {veiculoParaPublicar && (
-        <ModalPublicar
+        <ModalPublicarAnuncio
           veiculo={veiculoParaPublicar}
           plataformas={PLATAFORMAS}
           tokenValido={tokenValido}
+          integracaoPara={integracaoPara}
           onSalvar={handlePublicar}
           onFechar={() => setVeiculoParaPublicar(null)}
         />
