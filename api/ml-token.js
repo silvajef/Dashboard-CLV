@@ -22,33 +22,41 @@ export default async function handler(req, res) {
   }
 
   if (!ML_CLIENT_ID || !ML_CLIENT_SECRET) {
-    return res.status(500).json({ error: 'VITE_ML_CLIENT_ID ou VITE_ML_CLIENT_SECRET não configurados no servidor' })
-  }
-
-  const credentials = Buffer.from(`${ML_CLIENT_ID}:${ML_CLIENT_SECRET}`).toString('base64')
-  const body = new URLSearchParams({
-    grant_type:   'authorization_code',
-    code,
-    redirect_uri,
-  })
-
-  const mlRes  = await fetch(ML_TOKEN_URL, {
-    method:  'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type':  'application/x-www-form-urlencoded',
-      'Accept':        'application/json',
-    },
-    body,
-  })
-
-  const json = await mlRes.json().catch(() => ({}))
-
-  if (!mlRes.ok) {
-    return res.status(mlRes.status).json({
-      error: json.message || json.error || 'Erro ao obter token do ML',
+    return res.status(500).json({
+      error: `Variáveis não configuradas no servidor: ${!ML_CLIENT_ID ? 'VITE_ML_CLIENT_ID ' : ''}${!ML_CLIENT_SECRET ? 'VITE_ML_CLIENT_SECRET' : ''}`.trim(),
     })
   }
 
-  return res.status(200).json(json)
+  try {
+    // ML usa client_id e client_secret como parâmetros no body (não Basic Auth)
+    const body = new URLSearchParams({
+      grant_type:    'authorization_code',
+      client_id:     ML_CLIENT_ID,
+      client_secret: ML_CLIENT_SECRET,
+      code,
+      redirect_uri,
+    })
+
+    const mlRes = await fetch(ML_TOKEN_URL, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept':       'application/json',
+      },
+      body,
+    })
+
+    const json = await mlRes.json().catch(() => ({}))
+
+    if (!mlRes.ok) {
+      return res.status(mlRes.status).json({
+        error: json.message || json.error || `ML retornou ${mlRes.status}`,
+        detail: json,
+      })
+    }
+
+    return res.status(200).json(json)
+  } catch (e) {
+    return res.status(500).json({ error: `Erro interno: ${e.message}` })
+  }
 }
