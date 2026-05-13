@@ -42,7 +42,7 @@ ALTER TABLE raw_webhook_events ENABLE ROW LEVEL SECURITY;
 
 -- Service role (webhook) pode inserir/atualizar sem RLS
 -- Usuários autenticados lêem apenas eventos linkados aos seus próprios leads
-CREATE POLICY IF NOT EXISTS "usuarios leem seus raw events" ON raw_webhook_events
+CREATE POLICY "usuarios leem seus raw events" ON raw_webhook_events
   FOR SELECT USING (
     id IN (
       SELECT raw_event_id FROM leads WHERE user_id = auth.uid()
