@@ -179,26 +179,34 @@ export function useAnuncios(userId) {
    * Gera webhook_token único por integração (reutiliza se já existir).
    * Requer que o usuário tenha re-autorizado com scope autoservice.
    */
+  /**
+   * Registra webhook de leads OLX no Autoservice e persiste token + config_id.
+   * Conforme docs OLX: POST /autoservice/v1/lead aceita { url, token }.
+   * O id da configuração é retornado pela OLX e armazenado para PUT/DELETE futuros.
+   * A URL do webhook é limpa (/api/olx-webhook) — o token vai apenas no body do registro.
+   * A OLX envia esse token em Authorization: Bearer ao chamar nosso endpoint.
+   */
   async function configurarLeadsOLX() {
     if (!tokenValido('olx')) throw new Error('Conecte a conta OLX primeiro.')
     const integ = integracaoPara('olx')
 
-    const webhookToken = integ.webhook_token    || crypto.randomUUID()
-    const configId     = integ.webhook_config_id || crypto.randomUUID()
-    const webhookUrl   = `${window.location.origin}/api/olx-webhook?token=${webhookToken}`
+    const webhookToken = integ.webhook_token || crypto.randomUUID()
+    const webhookUrl   = `${window.location.origin}/api/olx-webhook`
 
     const res  = await fetch('/api/olx-leads-config', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        access_token: integ.access_token,
-        webhook_url:  webhookUrl,
-        config_id:    configId,
+        access_token:  integ.access_token,
+        webhook_url:   webhookUrl,
+        webhook_token: webhookToken,
       }),
     })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(json.error || `Erro ${res.status} ao configurar leads OLX`)
 
+    // OLX retorna { id, url, token } — persistimos o id para atualizações futuras
+    const configId = json.id || integ.webhook_config_id || ''
     await api.salvarWebhookToken(userId, 'olx', { token: webhookToken, configId })
     await loadAll()
   }

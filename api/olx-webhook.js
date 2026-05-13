@@ -3,10 +3,14 @@
  * Arquitetura: OLX → POST aqui → salva raw event → upsert lead idempotente → 200
  *
  * Requisitos: VITE_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY no Vercel.
- * O token na query string identifica a integração do usuário.
  *
- * POST /api/olx-webhook?token={webhook_token}
- * Body: payload OLX conforme docs (externalId, name, phone, email, message, adId…)
+ * Conforme docs OLX: o token de segurança é enviado pela OLX no header
+ * Authorization: Bearer {webhook_token} — não como query param.
+ * Usamos esse token para identificar a integração do usuário.
+ *
+ * POST /api/olx-webhook
+ * Headers: Authorization: Bearer {webhook_token}
+ * Body: payload OLX (externalId, name, phone, email, message, adId…)
  */
 
 const SUPABASE_URL     = process.env.VITE_SUPABASE_URL
@@ -62,8 +66,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // ── 1. Validar token na query string ──────────────────────────────────
-  const { token } = req.query
+  // ── 1. Extrair token do header Authorization enviado pela OLX ─────────
+  // Conforme docs: OLX envia o token que cadastramos em Authorization: Bearer {token}
+  const authHeader = req.headers.authorization || ''
+  const token      = authHeader.replace(/^Bearer\s+/i, '').trim()
+
   if (!token) {
     console.log(JSON.stringify({ event: 'webhook_rejected', reason: 'token_missing', requestId }))
     return res.status(401).json({ error: 'Token ausente' })
@@ -95,15 +102,14 @@ export default async function handler(req, res) {
   let rawEventId = null
   try {
     const { ok, json: raw } = await sbPost('/raw_webhook_events', {
-      provider:    'olx',
-      payload:     body,
-      headers:     sanitizeHeaders(req.headers),
-      status:      'received',
+      provider: 'olx',
+      payload:  body,
+      headers:  sanitizeHeaders(req.headers),
+      status:   'received',
     })
     rawEventId = ok ? (Array.isArray(raw) ? raw[0]?.id : raw?.id) : null
     console.log(JSON.stringify({ event: 'raw_event_saved', requestId, rawEventId }))
   } catch (e) {
-    // Continua mesmo sem salvar o raw — lead é mais importante
     console.log(JSON.stringify({ event: 'raw_event_error', requestId, error: e.message }))
   }
 
@@ -135,13 +141,12 @@ export default async function handler(req, res) {
     source:      body.source  || 'olx',
     status:      'novo',
   }
-  if (veiculoId)   leadPayload.veiculo_id   = veiculoId
-  if (rawEventId)  leadPayload.raw_event_id = rawEventId
+  if (veiculoId)  leadPayload.veiculo_id   = veiculoId
+  if (rawEventId) leadPayload.raw_event_id = rawEventId
 
   const { ok: leadOk, status: leadStatus } = await sbPost(
     '/leads',
     leadPayload,
-    // ignore-duplicates = idempotente: reenvio do mesmo externalId não cria duplicata
     'resolution=ignore-duplicates,return=representation',
   )
 
@@ -158,6 +163,5 @@ export default async function handler(req, res) {
     })
   }
 
-  // Responde sempre 200 para evitar retentativas desnecessárias da OLX
   return res.status(200).json({ success: true, requestId })
 }
