@@ -21,7 +21,7 @@ import * as napista      from './napista.js'
 /** @type {ConfigPlataforma[]} */
 export const PLATAFORMAS = [
   { slug: 'mercadolivre', nome: 'Mercado Livre', emoji: '🛒', cor: '#ffe600', implementado: true,  adaptador: mercadolivre },
-  { slug: 'olx',          nome: 'OLX',           emoji: '🔶', cor: '#f28500', implementado: false, adaptador: olx          },
+  { slug: 'olx',          nome: 'OLX',           emoji: '🔶', cor: '#f28500', implementado: true,  adaptador: olx          },
   { slug: 'icarros',      nome: 'iCarros',        emoji: '🚗', cor: '#e63027', implementado: false, adaptador: icarros      },
   { slug: 'mobiauto',     nome: 'Mobiauto',       emoji: '🏎', cor: '#0066cc', implementado: false, adaptador: mobiauto     },
   { slug: 'napista',      nome: 'Na Pista',       emoji: '🏁', cor: '#00b140', implementado: false, adaptador: napista      },

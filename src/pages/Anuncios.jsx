@@ -3,10 +3,10 @@ import { useAnuncios } from '../hooks/useAnuncios'
 import { useAuth } from '../hooks/useAuth'
 import { PLATAFORMAS } from '../lib/plataformas/index'
 import { STATUS_ANUNCIO_CFG } from '../lib/plataformas/types'
-import { getRedirectUri } from '../lib/plataformas/mercadolivre'
 import { C, fmtR } from '../lib/constants'
 
-const ML_CONFIGURADO = !!import.meta.env.VITE_ML_CLIENT_ID
+const ML_CONFIGURADO  = !!import.meta.env.VITE_ML_CLIENT_ID
+const OLX_CONFIGURADO = !!import.meta.env.VITE_OLX_CLIENT_ID
 
 /* ── Estilos base ─────────────────────────────────────────────────────── */
 const s = {
@@ -35,17 +35,14 @@ const s = {
                 fontSize: 12, marginBottom: 12 },
 }
 
-/* ── Aviso de configuração do ML ──────────────────────────────────────── */
+/* ── Avisos de configuração de plataformas ────────────────────────────── */
 function AvisoConfiguracaoML() {
-  const redirectUri = getRedirectUri()
+  const redirectUri = `${window.location.origin}/`
   return (
     <div style={{ background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: 10,
-                  padding: '14px 16px', marginBottom: 20 }}>
+                  padding: '14px 16px', marginBottom: 12 }}>
       <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: C.amber }}>
         ⚠ Mercado Livre não configurado
-      </p>
-      <p style={{ margin: '0 0 10px', fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-        Para conectar o ML, verifique os dois itens abaixo:
       </p>
       <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.muted, lineHeight: 2 }}>
         <li>
@@ -55,10 +52,35 @@ function AvisoConfiguracaoML() {
         </li>
         <li>
           No <strong style={{ color: C.text }}>ML Developers → Seu App → Redirect URIs</strong>,
-          cadastre exatamente:
-          <br />
-          <code style={{ background: C.card, padding: '3px 8px', borderRadius: 4, color: C.green,
-                         display: 'inline-block', marginTop: 4, wordBreak: 'break-all' }}>
+          cadastre exatamente:{' '}
+          <code style={{ background: C.card, padding: '2px 8px', borderRadius: 4, color: C.green, wordBreak: 'break-all' }}>
+            {redirectUri}
+          </code>
+        </li>
+      </ol>
+    </div>
+  )
+}
+
+function AvisoConfiguracaoOLX() {
+  const redirectUri = `${window.location.origin}/`
+  return (
+    <div style={{ background: '#f2850018', border: '1px solid #f2850044', borderRadius: 10,
+                  padding: '14px 16px', marginBottom: 12 }}>
+      <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: '#f28500' }}>
+        ⚠ OLX não configurado
+      </p>
+      <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.muted, lineHeight: 2 }}>
+        <li>
+          No <strong style={{ color: C.text }}>Vercel → Settings → Environment Variables</strong>,
+          adicione <code style={{ background: C.card, padding: '1px 6px', borderRadius: 4, color: '#f28500' }}>VITE_OLX_CLIENT_ID</code> e{' '}
+          <code style={{ background: C.card, padding: '1px 6px', borderRadius: 4, color: '#f28500' }}>VITE_OLX_CLIENT_SECRET</code> e
+          faça um novo deploy.
+        </li>
+        <li>
+          No <strong style={{ color: C.text }}>OLX Developers → Seu App → Redirect URIs</strong>,
+          cadastre exatamente:{' '}
+          <code style={{ background: C.card, padding: '2px 8px', borderRadius: 4, color: C.green, wordBreak: 'break-all' }}>
             {redirectUri}
           </code>
         </li>
@@ -71,7 +93,9 @@ function AvisoConfiguracaoML() {
 function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar }) {
   const statusColor = conectado && !expirou ? C.green : conectado ? C.amber : C.faint
   const statusLabel = conectado && !expirou ? 'Conectado' : conectado ? 'Token expirado' : 'Desconectado'
-  const mlBloqueado = config.slug === 'mercadolivre' && !ML_CONFIGURADO
+  const bloqueado   =
+    (config.slug === 'mercadolivre' && !ML_CONFIGURADO) ||
+    (config.slug === 'olx'          && !OLX_CONFIGURADO)
 
   return (
     <div style={{ ...s.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -79,8 +103,8 @@ function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar 
         <span style={{ fontSize: 22 }}>{config.emoji}</span>
         <div>
           <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>{config.nome}</p>
-          <span style={{ fontSize: 11, color: mlBloqueado ? C.amber : statusColor }}>
-            {mlBloqueado ? 'Configuração pendente' : statusLabel}
+          <span style={{ fontSize: 11, color: bloqueado ? C.amber : statusColor }}>
+            {bloqueado ? 'Configuração pendente' : statusLabel}
           </span>
           {!config.implementado && (
             <span style={{ fontSize: 10, color: C.faint, display: 'block' }}>Em breve</span>
@@ -88,7 +112,7 @@ function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar 
         </div>
       </div>
 
-      {config.implementado && !mlBloqueado && (
+      {config.implementado && !bloqueado && (
         conectado
           ? <button style={{ ...s.btn, ...s.btnDanger }} onClick={onDesconectar}>Desconectar</button>
           : <button style={{ ...s.btn, ...s.btnPrimary }} onClick={onConectar}>Conectar</button>
@@ -234,14 +258,17 @@ export default function Anuncios({ veiculos }) {
     anuncios, integracoes, loading, error,
     publicar, pausar, reativar, fechar,
     conectar, desconectar, tokenValido,
-    processarCallbackML,
+    processarCallbackML, processarCallbackOLX,
   } = useAnuncios(userId)
 
   const [veiculoParaPublicar, setVeiculoParaPublicar] = useState(null)
   const [erroAcao,            setErroAcao]            = useState('')
 
-  // Processa redirect do OAuth ML assim que a página monta
-  useEffect(() => { processarCallbackML() }, []) // eslint-disable-line
+  // Processa redirects OAuth (ML usa hash, OLX usa query string)
+  useEffect(() => {
+    processarCallbackML()
+    processarCallbackOLX()
+  }, []) // eslint-disable-line
 
   // Veículos disponíveis para anúncio: pronto ou em_venda
   const veiculosAnunciavel = (veiculos || [])
@@ -286,8 +313,8 @@ export default function Anuncios({ veiculos }) {
         <div style={{ ...s.erro, marginBottom: 20 }}>{error || erroAcao}</div>
       )}
 
-      {/* Aviso quando ML não está configurado */}
-      {!ML_CONFIGURADO && <AvisoConfiguracaoML />}
+      {!ML_CONFIGURADO  && <AvisoConfiguracaoML />}
+      {!OLX_CONFIGURADO && <AvisoConfiguracaoOLX />}
 
       {/* Conexões de plataforma */}
       <p style={s.secao}>Plataformas</p>

@@ -8,7 +8,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import * as api from '../lib/api-anuncios'
 import { getPlatforma } from '../lib/plataformas/index'
-import { extrairTokenDaUrl, getRedirectUri } from '../lib/plataformas/mercadolivre'
+import { extrairTokenDaUrl } from '../lib/plataformas/mercadolivre'
+import { extrairCodigoDaUrl, trocarCodigoPorToken } from '../lib/plataformas/olx'
 
 export function useAnuncios(userId) {
   const [anuncios,    setAnuncios]    = useState([])
@@ -53,8 +54,33 @@ export function useAnuncios(userId) {
       expires_at:   expiresAt,
     }).then(loadAll).catch(e => setError(e.message))
 
-    // Remove o token do hash para não ser reprocessado em navegações futuras
     window.history.replaceState(null, '', window.location.pathname)
+    return true
+  }
+
+  // Processa callback OAuth da OLX (?code= na query string após redirecionamento)
+  async function processarCallbackOLX() {
+    const code = extrairCodigoDaUrl(window.location.search)
+    if (!code || !userId) return false
+
+    // Limpa ?code= imediatamente para não reprocessar em navegações futuras
+    window.history.replaceState(null, '', window.location.pathname)
+
+    try {
+      const redirectUri = `${window.location.origin}/`
+      const tokens      = await trocarCodigoPorToken(code, redirectUri)
+      const expiresAt   = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString()
+      await api.upsertIntegracao({
+        user_id:       userId,
+        plataforma:    'olx',
+        access_token:  tokens.access_token,
+        refresh_token: tokens.refresh_token || '',
+        expires_at:    expiresAt,
+      })
+      await loadAll()
+    } catch (e) {
+      setError(`OLX OAuth: ${e.message}`)
+    }
     return true
   }
 
@@ -127,9 +153,9 @@ export function useAnuncios(userId) {
   }
 
   function conectar(plataforma) {
-    // Usa sempre a raiz do domínio como redirect URI — deve ser cadastrada
-    // EXATAMENTE assim no painel do ML Developers (sem path, sem trailing slash variável)
-    const redirectUri    = getRedirectUri()
+    // Raiz do domínio como redirect URI — deve ser cadastrada EXATAMENTE assim
+    // no painel de cada plataforma (ML Developers, OLX Developers, etc.)
+    const redirectUri    = `${window.location.origin}/`
     const { adaptador }  = getPlatforma(plataforma)
     window.location.href = adaptador.construirUrlAutenticacao(redirectUri)
   }
@@ -144,7 +170,7 @@ export function useAnuncios(userId) {
     publicar, pausar, reativar, fechar,
     conectar, desconectar,
     tokenValido, integracaoPara,
-    processarCallbackML,
+    processarCallbackML, processarCallbackOLX,
     reload: loadAll,
   }
 }
