@@ -36,7 +36,7 @@ export function construirUrlAutenticacao(redirectUri) {
     response_type: 'code',
     client_id:     OLX_CLIENT_ID,
     redirect_uri:  redirectUri,
-    scope:         'automotivos',
+    scope:         'autoupload',
     state:         crypto.randomUUID(),
   })
   return `${OLX_AUTH_URL}?${params.toString()}`
