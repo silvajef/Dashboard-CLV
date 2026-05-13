@@ -2,9 +2,12 @@
  * Vercel Serverless Function — registra webhook de leads no OLX Autoservice.
  * Necessário porque o browser não pode chamar apps.olx.com.br diretamente (CORS).
  *
+ * Conforme docs OLX: POST /autoservice/v1/lead aceita apenas { url, token }.
+ * O `id` da configuração é RETORNADO pela OLX na resposta (não enviado).
+ *
  * POST /api/olx-leads-config
- * Body: { access_token, webhook_url, config_id }
- * Repassa para: POST https://apps.olx.com.br/autoservice/v1/lead
+ * Body: { access_token, webhook_url, webhook_token }
+ * Retorna: { id, url, token } — o id deve ser persistido para PUT/DELETE futuros
  */
 
 const OLX_AUTOSERVICE = 'https://apps.olx.com.br/autoservice/v1'
@@ -14,18 +17,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const { access_token, webhook_url, config_id } = req.body || {}
+  const { access_token, webhook_url, webhook_token } = req.body || {}
 
-  if (!access_token || !webhook_url || !config_id) {
-    return res.status(400).json({ error: 'access_token, webhook_url e config_id são obrigatórios' })
-  }
-
-  // Extrai o token da webhook_url para enviar ao OLX como campo token
-  let webhookToken = ''
-  try {
-    webhookToken = new URL(webhook_url).searchParams.get('token') || ''
-  } catch {
-    return res.status(400).json({ error: 'webhook_url inválida' })
+  if (!access_token || !webhook_url || !webhook_token) {
+    return res.status(400).json({ error: 'access_token, webhook_url e webhook_token são obrigatórios' })
   }
 
   try {
@@ -35,10 +30,11 @@ export default async function handler(req, res) {
         Authorization:  `Bearer ${access_token}`,
         'Content-Type': 'application/json',
       },
+      // Conforme docs: payload tem apenas url e token.
+      // token é enviado pela OLX no header Authorization ao chamar o webhook.
       body: JSON.stringify({
-        id:    config_id,
         url:   webhook_url,
-        token: webhookToken,
+        token: webhook_token,
       }),
     })
 
@@ -49,6 +45,7 @@ export default async function handler(req, res) {
         error: json.message || json.error || `OLX autoservice error ${olxRes.status}`,
       })
     }
+    // Retorna { id, url, token } — frontend persiste o id para operações futuras
     return res.status(200).json(json)
   } catch (e) {
     return res.status(500).json({ error: `Erro interno: ${e.message}` })
