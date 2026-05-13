@@ -80,12 +80,13 @@ export function useAnuncios(userId) {
     try {
       const redirectUri = `${window.location.origin}/`
       const tokens      = await trocarCodigoPorToken(code, redirectUri)
-      const expiresAt   = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString()
+      // OLX não retorna expires_in — token válido por 24h por convenção
+      const expiresAt   = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       await api.upsertIntegracao({
         user_id:       userId,
         plataforma:    'olx',
         access_token:  tokens.access_token,
-        refresh_token: tokens.refresh_token || '',
+        refresh_token: '',
         expires_at:    expiresAt,
       })
       await loadAll()
