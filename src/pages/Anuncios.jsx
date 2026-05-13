@@ -122,6 +122,47 @@ function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar 
   )
 }
 
+/* ── Card de configuração de leads OLX ───────────────────────────────── */
+function OlxLeadsCard({ integracaoPara, onConfigurar, configurando }) {
+  const integ = integracaoPara('olx')
+  if (!integ?.access_token) return null
+
+  const configurado = !!integ.webhook_configurado
+
+  return (
+    <div style={{ ...s.card,
+                  border: `1px solid ${configurado ? '#22d3a044' : C.border}`,
+                  marginBottom: 0 }}>
+      <div style={{ ...s.row, justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <div style={s.row}>
+          <span style={{ fontSize: 20 }}>📨</span>
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>
+              Recebimento de Leads — OLX
+            </p>
+            <span style={{ fontSize: 11, color: configurado ? '#22d3a0' : C.amber }}>
+              {configurado
+                ? 'Ativo — leads chegam automaticamente na aba Leads'
+                : 'Não configurado — clique para ativar'}
+            </span>
+          </div>
+        </div>
+        <button
+          style={{ ...s.btn, ...(configurado ? s.btnGhost : s.btnPrimary) }}
+          onClick={onConfigurar}
+          disabled={configurando}>
+          {configurando ? 'Configurando...' : configurado ? 'Reconfigurar' : 'Ativar Leads'}
+        </button>
+      </div>
+      {!configurado && (
+        <p style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>
+          Se for a primeira vez, reconecte a OLX antes de ativar para garantir o escopo <code>autoservice</code>.
+        </p>
+      )}
+    </div>
+  )
+}
+
 /* ── Badge de status do anúncio ───────────────────────────────────────── */
 function BadgeAnuncio({ status }) {
   const cfg = STATUS_ANUNCIO_CFG[status] || STATUS_ANUNCIO_CFG.rascunho
@@ -189,11 +230,12 @@ export default function Anuncios({ veiculos }) {
     anuncios, integracoes, loading, error,
     publicar, pausar, reativar, fechar,
     conectar, desconectar, tokenValido, integracaoPara,
-    processarCallbackOAuth,
+    processarCallbackOAuth, configurarLeadsOLX,
   } = useAnuncios(userId)
 
   const [veiculoParaPublicar, setVeiculoParaPublicar] = useState(null)
   const [erroAcao,            setErroAcao]            = useState('')
+  const [configurandoLeads,   setConfigurandoLeads]   = useState(false)
 
   // Processa callback OAuth (ML e OLX) quando userId fica disponível
   useEffect(() => {
@@ -231,6 +273,18 @@ export default function Anuncios({ veiculos }) {
     await publicar(veiculoParaPublicar, plataforma, dados)
   }
 
+  async function handleConfigurarLeadsOLX() {
+    setConfigurandoLeads(true)
+    setErroAcao('')
+    try {
+      await configurarLeadsOLX()
+    } catch (e) {
+      setErroAcao(e.message)
+    } finally {
+      setConfigurandoLeads(false)
+    }
+  }
+
   if (loading) return (
     <div style={{ ...s.page, color: C.muted, fontSize: 13 }}>Carregando anúncios...</div>
   )
@@ -260,6 +314,20 @@ export default function Anuncios({ veiculos }) {
           />
         ))}
       </div>
+
+      {/* Leads OLX — configuração de webhook */}
+      {integracaoConectada('olx') && (
+        <>
+          <p style={s.secao}>Integração de Leads</p>
+          <div style={{ ...s.grid, marginBottom: 28 }}>
+            <OlxLeadsCard
+              integracaoPara={integracaoPara}
+              onConfigurar={handleConfigurarLeadsOLX}
+              configurando={configurandoLeads}
+            />
+          </div>
+        </>
+      )}
 
       {/* Veículos disponíveis */}
       <p style={s.secao}>Veículos disponíveis para anúncio ({veiculosAnunciavel.length})</p>

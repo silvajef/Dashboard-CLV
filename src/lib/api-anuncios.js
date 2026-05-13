@@ -70,3 +70,27 @@ export async function deleteIntegracao(userId, plataforma) {
     .eq('plataforma', plataforma)
   if (error) throw error
 }
+
+/**
+ * Persiste webhook_token, webhook_config_id e webhook_configurado na integração.
+ * Chamado após registrar o webhook com sucesso no OLX Autoservice.
+ *
+ * salvarWebhookToken(userId, 'olx', { token: 'uuid', configId: 'uuid' })
+ *
+ * @param {string} userId
+ * @param {string} plataforma
+ * @param {{ token: string, configId: string }} dados
+ */
+export async function salvarWebhookToken(userId, plataforma, { token, configId }) {
+  const { error } = await supabase
+    .from('integracoes')
+    .update({
+      webhook_token:       token,
+      webhook_config_id:   configId,
+      webhook_configurado: true,
+      updated_at:          new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+    .eq('plataforma', plataforma)
+  if (error) throw error
+}
