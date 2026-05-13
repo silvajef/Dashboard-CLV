@@ -6,12 +6,10 @@
  * trocarCodigoPorToken troca por access_token + refresh_token.
  */
 
-const ML_BASE      = 'https://api.mercadolivre.com'
-const ML_AUTH_URL  = 'https://auth.mercadolivre.com.br/authorization'
-const ML_TOKEN_URL = 'https://api.mercadolivre.com/oauth/token'
+const ML_BASE     = 'https://api.mercadolivre.com'
+const ML_AUTH_URL = 'https://auth.mercadolivre.com.br/authorization'
 
-const ML_CLIENT_ID     = import.meta.env.VITE_ML_CLIENT_ID
-const ML_CLIENT_SECRET = import.meta.env.VITE_ML_CLIENT_SECRET
+const ML_CLIENT_ID = import.meta.env.VITE_ML_CLIENT_ID
 
 // Categoria padrão: Veículos > Caminhões e Utilitários.
 const ML_CATEGORIA = import.meta.env.VITE_ML_CATEGORIA || 'MLB271599'
@@ -45,34 +43,22 @@ export function construirUrlAutenticacao(redirectUri) {
 }
 
 /**
- * Troca o authorization code por access_token + refresh_token.
+ * Troca o authorization code por access_token via Vercel serverless function.
+ * A chamada direta ao ML é bloqueada por CORS — o proxy /api/ml-token resolve isso.
  *
  * @param {string} code
  * @param {string} redirectUri
- * @returns {Promise<{ access_token: string, refresh_token: string, expires_in: number, user_id: string }>}
+ * @returns {Promise<{ access_token: string, refresh_token: string, expires_in: number }>}
  */
 export async function trocarCodigoPorToken(code, redirectUri) {
-  if (!ML_CLIENT_SECRET) {
-    throw new Error('VITE_ML_CLIENT_SECRET não configurado.')
-  }
-  const credentials = btoa(`${ML_CLIENT_ID}:${ML_CLIENT_SECRET}`)
-  const body = new URLSearchParams({
-    grant_type:   'authorization_code',
-    code,
-    redirect_uri: redirectUri,
-  })
-  const res  = await fetch(ML_TOKEN_URL, {
+  const res  = await fetch('/api/ml-token', {
     method:  'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type':  'application/x-www-form-urlencoded',
-      'Accept':        'application/json',
-    },
-    body,
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ code, redirect_uri: redirectUri }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(`ML token error ${res.status}: ${json.message || JSON.stringify(json)}`)
+    throw new Error(json.error || `Erro ${res.status} ao obter token do ML`)
   }
   return json
 }
