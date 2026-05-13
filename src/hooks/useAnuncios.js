@@ -1,6 +1,8 @@
 /**
  * Hook para gerenciar anúncios e integrações OAuth com plataformas externas.
- * Lida com o callback OAuth do ML lendo o hash da URL na montagem.
+ * ML e OLX usam Authorization Code Flow — ambos retornam ?code= na query string.
+ * A plataforma de origem é identificada pelo prefixo do parâmetro ?state=
+ * (ex: "ml:uuid" ou "olx:uuid").
  *
  * @param {string} userId - auth.users.id do usuário logado
  */
@@ -8,8 +10,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import * as api from '../lib/api-anuncios'
 import { getPlatforma } from '../lib/plataformas/index'
-import { extrairTokenDaUrl } from '../lib/plataformas/mercadolivre'
-import { trocarCodigoPorToken } from '../lib/plataformas/olx'
+import { trocarCodigoPorToken as mlTrocarToken  } from '../lib/plataformas/mercadolivre'
+import { trocarCodigoPorToken as olxTrocarToken } from '../lib/plataformas/olx'
 
 export function useAnuncios(userId) {
   const [anuncios,    setAnuncios]    = useState([])
@@ -30,7 +32,6 @@ export function useAnuncios(userId) {
     }
   }, [userId])
 
-  // Inscreve em mudanças em tempo real
   useEffect(() => {
     loadAll()
     const channel = supabase
@@ -40,58 +41,57 @@ export function useAnuncios(userId) {
     return () => supabase.removeChannel(channel)
   }, [loadAll])
 
-  // Processa callback OAuth do ML (hash na URL após redirecionamento)
-  function processarCallbackML() {
-    const token = extrairTokenDaUrl(window.location.hash)
-    if (!token || !userId) return false
-
-    const expiresAt = new Date(Date.now() + token.expires_in * 1000).toISOString()
-    api.upsertIntegracao({
-      user_id:      userId,
-      plataforma:   'mercadolivre',
-      access_token: token.access_token,
-      ml_user_id:   token.user_id,
-      expires_at:   expiresAt,
-    }).then(loadAll).catch(e => setError(e.message))
-
-    window.history.replaceState(null, '', window.location.pathname)
-    return true
-  }
-
-  // Processa callback OAuth da OLX (?code= na query string após redirecionamento)
-  async function processarCallbackOLX() {
+  /**
+   * Processa callback OAuth quando userId está disponível.
+   * Identifica a plataforma pelo prefixo do ?state= (ml: ou olx:).
+   * Limpa a query string após processar para evitar reprocessamento.
+   */
+  async function processarCallbackOAuth() {
     const params = new URLSearchParams(window.location.search)
 
-    // OLX retornou erro (ex: escopo inválido, usuário negou acesso)
-    const erroOlx = params.get('error')
-    if (erroOlx) {
-      const desc = params.get('error_description') || erroOlx
+    const erro = params.get('error')
+    if (erro) {
+      const desc = params.get('error_description') || erro
       window.history.replaceState(null, '', window.location.pathname)
-      setError(`OLX recusou a autorização: ${desc}`)
+      setError(`Autorização recusada: ${desc}`)
       return false
     }
 
-    const code = params.get('code')
+    const code  = params.get('code')
+    const state = params.get('state') || ''
     if (!code || !userId) return false
 
-    // Limpa ?code= imediatamente para não reprocessar em navegações futuras
     window.history.replaceState(null, '', window.location.pathname)
 
+    const redirectUri  = `${window.location.origin}/`
+    const plataforma   = state.startsWith('ml:') ? 'mercadolivre' : 'olx'
+
     try {
-      const redirectUri = `${window.location.origin}/`
-      const tokens      = await trocarCodigoPorToken(code, redirectUri)
-      // OLX não retorna expires_in — token válido por 24h por convenção
-      const expiresAt   = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      await api.upsertIntegracao({
-        user_id:       userId,
-        plataforma:    'olx',
-        access_token:  tokens.access_token,
-        refresh_token: '',
-        expires_at:    expiresAt,
-      })
+      if (plataforma === 'mercadolivre') {
+        const tokens    = await mlTrocarToken(code, redirectUri)
+        const expiresAt = new Date(Date.now() + (tokens.expires_in || 21600) * 1000).toISOString()
+        await api.upsertIntegracao({
+          user_id:       userId,
+          plataforma:    'mercadolivre',
+          access_token:  tokens.access_token,
+          refresh_token: tokens.refresh_token || '',
+          expires_at:    expiresAt,
+        })
+      } else {
+        const tokens    = await olxTrocarToken(code, redirectUri)
+        // OLX não retorna expires_in — validade assumida de 24h
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        await api.upsertIntegracao({
+          user_id:       userId,
+          plataforma:    'olx',
+          access_token:  tokens.access_token,
+          refresh_token: '',
+          expires_at:    expiresAt,
+        })
+      }
       await loadAll()
     } catch (e) {
-      setError(`OLX OAuth: ${e.message}`)
+      setError(`${plataforma} OAuth: ${e.message}`)
     }
     return true
   }
@@ -155,7 +155,6 @@ export function useAnuncios(userId) {
     const anuncio = anuncios.find(a => a.id === anuncioId)
     if (!anuncio) throw new Error(`Anúncio "${anuncioId}" não encontrado.`)
 
-    // Tenta fechar na plataforma; falha silenciosa (pode já estar fechado)
     if (tokenValido(anuncio.plataforma) && anuncio.listing_id) {
       const { adaptador } = getPlatforma(anuncio.plataforma)
       const integ          = integracaoPara(anuncio.plataforma)
@@ -165,8 +164,6 @@ export function useAnuncios(userId) {
   }
 
   function conectar(plataforma) {
-    // Raiz do domínio como redirect URI — deve ser cadastrada EXATAMENTE assim
-    // no painel de cada plataforma (ML Developers, OLX Developers, etc.)
     const redirectUri    = `${window.location.origin}/`
     const { adaptador }  = getPlatforma(plataforma)
     window.location.href = adaptador.construirUrlAutenticacao(redirectUri)
@@ -182,7 +179,7 @@ export function useAnuncios(userId) {
     publicar, pausar, reativar, fechar,
     conectar, desconectar,
     tokenValido, integracaoPara,
-    processarCallbackML, processarCallbackOLX,
+    processarCallbackOAuth,
     reload: loadAll,
   }
 }

@@ -1,27 +1,29 @@
 /**
- * Adaptador Mercado Livre — OAuth Implícito + Classificados API v1
- * Docs: https://developers.mercadolivre.com.br/pt_br/anuncie-no-mercado-livre
+ * Adaptador Mercado Livre — OAuth Authorization Code Flow + Classificados API v1
+ * Docs: https://developers.mercadolivre.com.br/pt_br/autenticacao-e-autorizacao
  *
- * Fluxo: o usuário é redirecionado ao ML → ML devolve access_token no hash da URL.
- * Não expõe client_secret (implicit flow, recomendado para SPAs).
+ * Fluxo: usuário autoriza → ML devolve ?code= na URL →
+ * trocarCodigoPorToken troca por access_token + refresh_token.
  */
 
 const ML_BASE      = 'https://api.mercadolivre.com'
 const ML_AUTH_URL  = 'https://auth.mercadolivre.com.br/authorization'
-const ML_CLIENT_ID = import.meta.env.VITE_ML_CLIENT_ID
+const ML_TOKEN_URL = 'https://api.mercadolivre.com/oauth/token'
+
+const ML_CLIENT_ID     = import.meta.env.VITE_ML_CLIENT_ID
+const ML_CLIENT_SECRET = import.meta.env.VITE_ML_CLIENT_SECRET
 
 // Categoria padrão: Veículos > Caminhões e Utilitários.
-// Ajuste via VITE_ML_CATEGORIA se precisar de outra categoria.
 const ML_CATEGORIA = import.meta.env.VITE_ML_CATEGORIA || 'MLB271599'
 
 /* ── Auth ────────────────────────────────────────────────────────────── */
 
 /**
- * Gera a URL de autenticação OAuth Implícito do ML.
- * Redireciona de volta para redirectUri com #access_token=... no hash.
+ * Gera a URL de autorização OAuth do ML (Authorization Code Flow).
+ * O state inclui prefixo "ml:" para identificar a plataforma no callback.
  *
- * construirUrlAutenticacao(window.location.href)
- * → 'https://auth.mercadolivre.com.br/authorization?response_type=token&...'
+ * construirUrlAutenticacao('https://meusite.com/')
+ * → 'https://auth.mercadolivre.com.br/authorization?response_type=code&...'
  *
  * @param {string} redirectUri
  * @returns {string}
@@ -34,43 +36,45 @@ export function construirUrlAutenticacao(redirectUri) {
     )
   }
   const params = new URLSearchParams({
-    response_type: 'token',
+    response_type: 'code',
     client_id:     ML_CLIENT_ID,
     redirect_uri:  redirectUri,
-    state:         crypto.randomUUID(),
+    state:         `ml:${crypto.randomUUID()}`,
   })
   return `${ML_AUTH_URL}?${params.toString()}`
 }
 
 /**
- * Retorna a redirect URI que será enviada ao ML.
- * Deve estar cadastrada EXATAMENTE igual no painel do ML Developers.
- * @returns {string}
- */
-export function getRedirectUri() {
-  return `${window.location.origin}/`
-}
-
-/**
- * Extrai o token do hash da URL após o redirect OAuth.
- * Deve ser chamado na montagem da página se window.location.hash contiver access_token.
+ * Troca o authorization code por access_token + refresh_token.
  *
- * extrairTokenDaUrl('#access_token=APP_USR-...&expires_in=21600&user_id=12345678')
- * → { access_token: 'APP_USR-...', expires_in: 21600, user_id: '12345678' }
- *
- * @param {string} hash - window.location.hash
- * @returns {{ access_token: string, expires_in: number, user_id: string } | null}
+ * @param {string} code
+ * @param {string} redirectUri
+ * @returns {Promise<{ access_token: string, refresh_token: string, expires_in: number, user_id: string }>}
  */
-export function extrairTokenDaUrl(hash) {
-  if (!hash) return null
-  const params      = new URLSearchParams(hash.replace(/^#/, ''))
-  const access_token = params.get('access_token')
-  if (!access_token) return null
-  return {
-    access_token,
-    expires_in: parseInt(params.get('expires_in') || '21600', 10),
-    user_id:    params.get('user_id') || '',
+export async function trocarCodigoPorToken(code, redirectUri) {
+  if (!ML_CLIENT_SECRET) {
+    throw new Error('VITE_ML_CLIENT_SECRET não configurado.')
   }
+  const credentials = btoa(`${ML_CLIENT_ID}:${ML_CLIENT_SECRET}`)
+  const body = new URLSearchParams({
+    grant_type:   'authorization_code',
+    code,
+    redirect_uri: redirectUri,
+  })
+  const res  = await fetch(ML_TOKEN_URL, {
+    method:  'POST',
+    headers: {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type':  'application/x-www-form-urlencoded',
+      'Accept':        'application/json',
+    },
+    body,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(`ML token error ${res.status}: ${json.message || JSON.stringify(json)}`)
+  }
+  return json
 }
 
 /* ── Helpers internos ─────────────────────────────────────────────────── */
@@ -114,7 +118,7 @@ export function buscarPerfilUsuario(accessToken) {
 /**
  * Publica um veículo como anúncio classificado no ML.
  * @param {string} accessToken
- * @param {Object} veiculo - registro da tabela veiculos
+ * @param {Object} veiculo
  * @param {number} preco
  * @returns {Promise<import('./types.js').ResultadoPublicacao>}
  */

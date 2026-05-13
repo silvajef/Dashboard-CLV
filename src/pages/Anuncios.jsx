@@ -258,18 +258,15 @@ export default function Anuncios({ veiculos }) {
     anuncios, integracoes, loading, error,
     publicar, pausar, reativar, fechar,
     conectar, desconectar, tokenValido,
-    processarCallbackML, processarCallbackOLX,
+    processarCallbackOAuth,
   } = useAnuncios(userId)
 
   const [veiculoParaPublicar, setVeiculoParaPublicar] = useState(null)
   const [erroAcao,            setErroAcao]            = useState('')
 
-  // ML: callback no hash — não precisa de userId
-  useEffect(() => { processarCallbackML() }, []) // eslint-disable-line
-
-  // OLX: callback na query string — aguarda userId (sessão carrega async)
+  // Processa callback OAuth (ML e OLX) quando userId fica disponível
   useEffect(() => {
-    if (userId) processarCallbackOLX()
+    if (userId) processarCallbackOAuth()
   }, [userId]) // eslint-disable-line
 
   // Veículos disponíveis para anúncio: pronto ou em_venda
