@@ -145,15 +145,16 @@ export default async function handler(req, res) {
 
   // ── 6. Upsert idempotente do lead ─────────────────────────────────────
   const leadPayload = {
-    external_id: externalId,
-    provider:    'olx',
-    user_id:     userId,
-    nome:        body.name    || '',
-    telefone:    body.phone   || '',
-    email:       body.email   || '',
-    mensagem:    body.message || '',
-    source:      body.source  || 'olx',
-    status:      'novo',
+    external_id:      externalId,
+    provider:         'olx',
+    plataforma_origem: 'olx',
+    user_id:          userId,
+    nome:             body.name    || '',
+    telefone:         body.phone   || '',
+    email:            body.email   || '',
+    mensagem:         body.message || '',
+    source:           body.source  || 'olx',
+    status:           'novo',
   }
   if (veiculoId)  leadPayload.veiculo_id   = veiculoId
   if (rawEventId) leadPayload.raw_event_id = rawEventId

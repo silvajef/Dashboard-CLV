@@ -39,6 +39,15 @@ function LeadCard({ lead, onClick }) {
     ? `${veiculo.marca_nome || ''} ${veiculo.modelo_nome || veiculo.modelo || ''} ${veiculo.ano_modelo || ''}`.trim()
     : null
 
+  // plataforma_origem é o campo antigo; provider é escrito pelo webhook OLX
+  const plataforma = lead.plataforma_origem || lead.provider
+
+  function handleWhatsApp(e) {
+    e.stopPropagation()
+    const numero = lead.telefone.replace(/\D/g, '')
+    window.open(`https://wa.me/55${numero}`, '_blank')
+  }
+
   return (
     <div
       onClick={onClick}
@@ -48,16 +57,32 @@ function LeadCard({ lead, onClick }) {
       <p style={{ margin: '0 0 4px', fontWeight: 700, fontSize: 13, color: C.text }}>{lead.nome}</p>
 
       {lead.telefone && (
-        <p style={{ margin: '0 0 2px', fontSize: 11, color: C.muted }}>📞 {lead.telefone}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 2px' }}>
+          <span style={{ fontSize: 11, color: C.muted }}>📞 {lead.telefone}</span>
+          <button
+            onClick={handleWhatsApp}
+            title='Abrir WhatsApp'
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                     fontSize: 13, lineHeight: 1 }}>
+            💬
+          </button>
+        </div>
       )}
       {veiculoLabel && (
         <p style={{ margin: '0 0 2px', fontSize: 11, color: C.muted }}>🚛 {veiculoLabel}</p>
       )}
+      {lead.mensagem && (
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: C.muted,
+                    overflow: 'hidden', display: '-webkit-box',
+                    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          "{lead.mensagem}"
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-        {lead.plataforma_origem && (
+        {plataforma && (
           <span style={{ fontSize: 14 }}>
-            {PLATAFORMA_EMOJI[lead.plataforma_origem] || '📋'}
+            {PLATAFORMA_EMOJI[plataforma] || '📋'}
           </span>
         )}
         <span style={{ fontSize: 10, color: C.faint }}>{fmtData(lead.created_at)}</span>
@@ -180,6 +205,16 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
             </select>
           </div>
         </div>
+
+        {form.mensagem && (
+          <div style={{ marginBottom: 10 }}>
+            <label style={s.label}>MENSAGEM DO INTERESSADO</label>
+            <div style={{ ...s.input, background: C.surface, color: C.muted,
+                          minHeight: 56, whiteSpace: 'pre-wrap', fontSize: 12 }}>
+              {form.mensagem}
+            </div>
+          </div>
+        )}
 
         <label style={s.label}>OBSERVAÇÕES</label>
         <textarea style={{ ...s.input, height: 64, resize: 'vertical', marginBottom: 16 }}
