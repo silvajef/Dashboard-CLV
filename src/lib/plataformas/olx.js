@@ -7,9 +7,10 @@
  * Todas as operações de anúncio vão para um único endpoint PUT com access_token no body.
  */
 
-const OLX_AUTH_URL   = 'https://auth.olx.com.br/oauth'
-const OLX_TOKEN_URL  = 'https://auth.olx.com.br/oauth/token'
-const OLX_IMPORT_URL = 'https://apps.olx.com.br/autoupload/import'
+const OLX_AUTH_URL  = 'https://auth.olx.com.br/oauth'
+const OLX_TOKEN_URL = 'https://auth.olx.com.br/oauth/token'
+// Chamadas à API OLX passam pelo proxy /api/olx-import para evitar CORS
+const OLX_IMPORT_URL = '/api/olx-import'
 
 const OLX_CLIENT_ID     = import.meta.env.VITE_OLX_CLIENT_ID
 const OLX_CLIENT_SECRET = import.meta.env.VITE_OLX_CLIENT_SECRET
@@ -84,8 +85,9 @@ export async function trocarCodigoPorToken(code, redirectUri) {
  * @param {Object[]} adList
  */
 async function olxImport(accessToken, adList) {
+  // Proxy /api/olx-import aceita POST e repassa como PUT para a OLX (evita CORS)
   const res  = await fetch(OLX_IMPORT_URL, {
-    method:  'PUT',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ access_token: accessToken, ad_list: adList }),
   })
