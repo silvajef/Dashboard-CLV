@@ -264,11 +264,13 @@ export default function Anuncios({ veiculos }) {
   const [veiculoParaPublicar, setVeiculoParaPublicar] = useState(null)
   const [erroAcao,            setErroAcao]            = useState('')
 
-  // Processa redirects OAuth (ML usa hash, OLX usa query string)
+  // ML: callback no hash — não precisa de userId
+  useEffect(() => { processarCallbackML() }, []) // eslint-disable-line
+
+  // OLX: callback na query string — aguarda userId (sessão carrega async)
   useEffect(() => {
-    processarCallbackML()
-    processarCallbackOLX()
-  }, []) // eslint-disable-line
+    if (userId) processarCallbackOLX()
+  }, [userId]) // eslint-disable-line
 
   // Veículos disponíveis para anúncio: pronto ou em_venda
   const veiculosAnunciavel = (veiculos || [])

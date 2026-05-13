@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import * as api from '../lib/api-anuncios'
 import { getPlatforma } from '../lib/plataformas/index'
 import { extrairTokenDaUrl } from '../lib/plataformas/mercadolivre'
-import { extrairCodigoDaUrl, trocarCodigoPorToken } from '../lib/plataformas/olx'
+import { trocarCodigoPorToken } from '../lib/plataformas/olx'
 
 export function useAnuncios(userId) {
   const [anuncios,    setAnuncios]    = useState([])
@@ -60,7 +60,18 @@ export function useAnuncios(userId) {
 
   // Processa callback OAuth da OLX (?code= na query string após redirecionamento)
   async function processarCallbackOLX() {
-    const code = extrairCodigoDaUrl(window.location.search)
+    const params = new URLSearchParams(window.location.search)
+
+    // OLX retornou erro (ex: escopo inválido, usuário negou acesso)
+    const erroOlx = params.get('error')
+    if (erroOlx) {
+      const desc = params.get('error_description') || erroOlx
+      window.history.replaceState(null, '', window.location.pathname)
+      setError(`OLX recusou a autorização: ${desc}`)
+      return false
+    }
+
+    const code = params.get('code')
     if (!code || !userId) return false
 
     // Limpa ?code= imediatamente para não reprocessar em navegações futuras
