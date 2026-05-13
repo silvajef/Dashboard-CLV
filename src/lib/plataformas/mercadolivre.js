@@ -6,7 +6,7 @@
  * trocarCodigoPorToken troca por access_token + refresh_token.
  */
 
-const ML_BASE     = 'https://api.mercadolivre.com'
+const ML_BASE     = 'https://api.mercadolibre.com'
 const ML_AUTH_URL = 'https://auth.mercadolivre.com.br/authorization'
 
 const ML_CLIENT_ID = import.meta.env.VITE_ML_CLIENT_ID

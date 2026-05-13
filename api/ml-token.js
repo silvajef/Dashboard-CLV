@@ -7,7 +7,8 @@
  * Response: { access_token, refresh_token, expires_in, ... }
  */
 
-const ML_TOKEN_URL     = 'https://api.mercadolivre.com/oauth/token'
+// domínio global da API ML (mercadolibre.com, não mercadolivre.com)
+const ML_TOKEN_URL = 'https://api.mercadolibre.com/oauth/token'
 const ML_CLIENT_ID     = process.env.VITE_ML_CLIENT_ID
 const ML_CLIENT_SECRET = process.env.VITE_ML_CLIENT_SECRET
 
