@@ -174,12 +174,42 @@ export function useAnuncios(userId) {
     setIntegracoes(prev => prev.filter(i => i.plataforma !== plataforma))
   }
 
+  /**
+   * Registra webhook de leads OLX no Autoservice e persiste o token na integração.
+   * Gera webhook_token único por integração (reutiliza se já existir).
+   * Requer que o usuário tenha re-autorizado com scope autoservice.
+   */
+  async function configurarLeadsOLX() {
+    if (!tokenValido('olx')) throw new Error('Conecte a conta OLX primeiro.')
+    const integ = integracaoPara('olx')
+
+    const webhookToken = integ.webhook_token    || crypto.randomUUID()
+    const configId     = integ.webhook_config_id || crypto.randomUUID()
+    const webhookUrl   = `${window.location.origin}/api/olx-webhook?token=${webhookToken}`
+
+    const res  = await fetch('/api/olx-leads-config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        access_token: integ.access_token,
+        webhook_url:  webhookUrl,
+        config_id:    configId,
+      }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(json.error || `Erro ${res.status} ao configurar leads OLX`)
+
+    await api.salvarWebhookToken(userId, 'olx', { token: webhookToken, configId })
+    await loadAll()
+  }
+
   return {
     anuncios, integracoes, loading, error,
     publicar, pausar, reativar, fechar,
     conectar, desconectar,
     tokenValido, integracaoPara,
     processarCallbackOAuth,
+    configurarLeadsOLX,
     reload: loadAll,
   }
 }
