@@ -11,9 +11,6 @@ const ML_AUTH_URL = 'https://auth.mercadolivre.com.br/authorization'
 
 const ML_CLIENT_ID = import.meta.env.VITE_ML_CLIENT_ID
 
-// Categoria padrão: Veículos > Caminhões e Utilitários.
-const ML_CATEGORIA = import.meta.env.VITE_ML_CATEGORIA || 'MLB271599'
-
 /* ── Auth ────────────────────────────────────────────────────────────── */
 
 /**
@@ -81,16 +78,6 @@ async function mlFetch(accessToken, path, options = {}) {
   return json
 }
 
-function montarAtributosVeiculo(veiculo) {
-  return [
-    { id: 'VEHICLE_YEAR',             value_name: String(veiculo.ano_modelo || '') },
-    { id: 'KILOMETERS',               value_name: String(veiculo.km || 0)          },
-    { id: 'FUEL_TYPE',                value_name: veiculo.combustivel || 'Diesel'  },
-    { id: 'COLOR',                    value_name: veiculo.cor || ''                },
-    { id: 'VEHICLE_PLATE_LAST_DIGIT', value_name: (veiculo.placa || '').slice(-1)  },
-  ]
-}
-
 /* ── API pública ─────────────────────────────────────────────────────── */
 
 /**
@@ -103,26 +90,31 @@ export function buscarPerfilUsuario(accessToken) {
 
 /**
  * Publica um veículo como anúncio classificado no ML.
+ * Usa category_id e atributos descobertos dinamicamente via ml-catalogo.js.
+ *
+ * publicarAnuncio(token, veiculo, { preco, fotos, listing_type_id, category_id, atributos })
+ *
  * @param {string} accessToken
  * @param {Object} veiculo
- * @param {number} preco
+ * @param {import('./types.js').DadosPublicacao} dados
  * @returns {Promise<import('./types.js').ResultadoPublicacao>}
  */
-export async function publicarAnuncio(accessToken, veiculo, preco) {
+export async function publicarAnuncio(accessToken, veiculo, dados) {
   const titulo = [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo, veiculo.ano_modelo]
     .filter(Boolean).join(' ').trim()
 
   const body = {
     title:              titulo,
-    category_id:        ML_CATEGORIA,
-    price:              preco,
+    category_id:        dados.category_id,
+    price:              dados.preco,
     currency_id:        'BRL',
     available_quantity: 1,
     buying_mode:        'classified',
-    listing_type_id:    'gold_special',
+    listing_type_id:    dados.listing_type_id || 'gold_special',
     condition:          'used',
     description:        { plain_text: veiculo.obs || `${titulo} — ${veiculo.km || 0} km` },
-    attributes:         montarAtributosVeiculo(veiculo),
+    pictures:           (dados.fotos || []).map(url => ({ source: url })),
+    attributes:         dados.atributos || [],
   }
 
   const res = await mlFetch(accessToken, '/items', { method: 'POST', body: JSON.stringify(body) })

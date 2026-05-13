@@ -107,13 +107,13 @@ export function useAnuncios(userId) {
     return new Date(integ.expires_at) > new Date()
   }
 
-  async function publicar(veiculo, plataforma, preco) {
+  async function publicar(veiculo, plataforma, dados) {
     if (!tokenValido(plataforma)) {
       throw new Error(`Conecte sua conta ${plataforma} antes de publicar.`)
     }
     const { adaptador } = getPlatforma(plataforma)
     const integ          = integracaoPara(plataforma)
-    const resultado      = await adaptador.publicarAnuncio(integ.access_token, veiculo, preco)
+    const resultado      = await adaptador.publicarAnuncio(integ.access_token, veiculo, dados)
 
     const titulo = [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo, veiculo.ano_modelo]
       .filter(Boolean).join(' ').trim()
@@ -124,7 +124,7 @@ export function useAnuncios(userId) {
       listing_id:      resultado.listing_id,
       url:             resultado.url,
       status:          'ativo',
-      preco_anunciado: preco,
+      preco_anunciado: dados.preco,
       titulo,
     })
   }
