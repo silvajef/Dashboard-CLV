@@ -10,9 +10,10 @@ import Prestadores from './pages/Prestadores'
 import Historico   from './pages/Historico'
 import KPIs        from './pages/KPIs'
 import Login       from './pages/Login'
-import Usuarios    from './pages/Usuarios'
-import Anuncios    from './pages/Anuncios'
-import Leads       from './pages/Leads'
+import Usuarios      from './pages/Usuarios'
+import Anuncios      from './pages/Anuncios'
+import Leads         from './pages/Leads'
+import Configuracoes from './pages/Configuracoes'
 
 const TABS_BASE = [
   { id:'dashboard',   icon:'📊', label:'KPIs'        },
@@ -24,7 +25,8 @@ const TABS_BASE = [
   { id:'historico',   icon:'📋', label:'Histórico'    },
 ]
 
-const TAB_USUARIOS = { id:'usuarios', icon:'👥', label:'Usuários' }
+const TAB_USUARIOS      = { id:'usuarios',      icon:'👥', label:'Usuários'      }
+const TAB_CONFIGURACOES = { id:'configuracoes', icon:'⚙️', label:'Config.'       }
 
 const ROLE_BADGE = {
   admin:        { label:'Admin', cor:'#ef4444' },
@@ -65,7 +67,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
     setAba('veiculos')
   }
 
-  const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS] : TABS_BASE
+  const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
 
@@ -172,7 +174,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
-        {abaAtual==='usuarios'    && <Usuarios />}
+        {abaAtual==='usuarios'      && <Usuarios />}
+        {abaAtual==='configuracoes' && <Configuracoes />}
       </main>
 
       {/* ── BOTTOM NAV MOBILE ── */}
