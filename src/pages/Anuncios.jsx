@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAnuncios } from '../hooks/useAnuncios'
 import { useAuth } from '../hooks/useAuth'
 import { PLATAFORMAS } from '../lib/plataformas/index'
 import { STATUS_ANUNCIO_CFG } from '../lib/plataformas/types'
 import { ModalPublicarAnuncio } from '../components/ModalPublicarAnuncio'
-import { C, fmtR } from '../lib/constants'
-
-const ML_CONFIGURADO  = !!import.meta.env.VITE_ML_CLIENT_ID
-const OLX_CONFIGURADO = !!import.meta.env.VITE_OLX_CLIENT_ID
+import { C } from '../lib/constants'
 
 /* ── Estilos base ─────────────────────────────────────────────────────── */
 const s = {
@@ -25,142 +22,8 @@ const s = {
   btnPrimary: { background: C.blue, color: '#fff' },
   btnGhost:   { background: C.card, color: C.muted, border: `1px solid ${C.border}` },
   btnDanger:  { background: C.redDim, color: C.red },
-  input:      { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
-                color: C.text, fontSize: 13, padding: '8px 12px', width: '100%',
-                fontFamily: "'Syne', sans-serif", boxSizing: 'border-box' },
-  overlay:    { position: 'fixed', inset: 0, background: '#0008', zIndex: 1000,
-                display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  modal:      { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-                padding: 28, width: 420, maxWidth: '94vw' },
   erro:       { background: C.redDim, color: C.red, borderRadius: 8, padding: '10px 14px',
                 fontSize: 12, marginBottom: 12 },
-}
-
-/* ── Avisos de configuração de plataformas ────────────────────────────── */
-function AvisoConfiguracaoML() {
-  const redirectUri = `${window.location.origin}/`
-  return (
-    <div style={{ background: '#f59e0b18', border: '1px solid #f59e0b44', borderRadius: 10,
-                  padding: '14px 16px', marginBottom: 12 }}>
-      <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: C.amber }}>
-        ⚠ Mercado Livre não configurado
-      </p>
-      <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.muted, lineHeight: 2 }}>
-        <li>
-          No <strong style={{ color: C.text }}>Vercel → Settings → Environment Variables</strong>,
-          adicione <code style={{ background: C.card, padding: '1px 6px', borderRadius: 4, color: C.amber }}>VITE_ML_CLIENT_ID</code> e
-          faça um novo deploy.
-        </li>
-        <li>
-          No <strong style={{ color: C.text }}>ML Developers → Seu App → Redirect URIs</strong>,
-          cadastre exatamente:{' '}
-          <code style={{ background: C.card, padding: '2px 8px', borderRadius: 4, color: C.green, wordBreak: 'break-all' }}>
-            {redirectUri}
-          </code>
-        </li>
-      </ol>
-    </div>
-  )
-}
-
-function AvisoConfiguracaoOLX() {
-  const redirectUri = `${window.location.origin}/`
-  return (
-    <div style={{ background: '#f2850018', border: '1px solid #f2850044', borderRadius: 10,
-                  padding: '14px 16px', marginBottom: 12 }}>
-      <p style={{ margin: '0 0 8px', fontWeight: 700, fontSize: 13, color: '#f28500' }}>
-        ⚠ OLX não configurado
-      </p>
-      <ol style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: C.muted, lineHeight: 2 }}>
-        <li>
-          No <strong style={{ color: C.text }}>Vercel → Settings → Environment Variables</strong>,
-          adicione <code style={{ background: C.card, padding: '1px 6px', borderRadius: 4, color: '#f28500' }}>VITE_OLX_CLIENT_ID</code> e{' '}
-          <code style={{ background: C.card, padding: '1px 6px', borderRadius: 4, color: '#f28500' }}>VITE_OLX_CLIENT_SECRET</code> e
-          faça um novo deploy.
-        </li>
-        <li>
-          No <strong style={{ color: C.text }}>OLX Developers → Seu App → Redirect URIs</strong>,
-          cadastre exatamente:{' '}
-          <code style={{ background: C.card, padding: '2px 8px', borderRadius: 4, color: C.green, wordBreak: 'break-all' }}>
-            {redirectUri}
-          </code>
-        </li>
-      </ol>
-    </div>
-  )
-}
-
-/* ── Cartão de conexão de plataforma ──────────────────────────────────── */
-function PlataformaCard({ config, conectado, expirou, onConectar, onDesconectar }) {
-  const statusColor = conectado && !expirou ? C.green : conectado ? C.amber : C.faint
-  const statusLabel = conectado && !expirou ? 'Conectado' : conectado ? 'Token expirado' : 'Desconectado'
-  const bloqueado   =
-    (config.slug === 'mercadolivre' && !ML_CONFIGURADO) ||
-    (config.slug === 'olx'          && !OLX_CONFIGURADO)
-
-  return (
-    <div style={{ ...s.card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <div style={s.row}>
-        <span style={{ fontSize: 22 }}>{config.emoji}</span>
-        <div>
-          <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>{config.nome}</p>
-          <span style={{ fontSize: 11, color: bloqueado ? C.amber : statusColor }}>
-            {bloqueado ? 'Configuração pendente' : statusLabel}
-          </span>
-          {!config.implementado && (
-            <span style={{ fontSize: 10, color: C.faint, display: 'block' }}>Em breve</span>
-          )}
-        </div>
-      </div>
-
-      {config.implementado && !bloqueado && (
-        conectado
-          ? <button style={{ ...s.btn, ...s.btnDanger }} onClick={onDesconectar}>Desconectar</button>
-          : <button style={{ ...s.btn, ...s.btnPrimary }} onClick={onConectar}>Conectar</button>
-      )}
-    </div>
-  )
-}
-
-/* ── Card de configuração de leads OLX ───────────────────────────────── */
-function OlxLeadsCard({ integracaoPara, onConfigurar, configurando }) {
-  const integ = integracaoPara('olx')
-  if (!integ?.access_token) return null
-
-  const configurado = !!integ.webhook_configurado
-
-  return (
-    <div style={{ ...s.card,
-                  border: `1px solid ${configurado ? '#22d3a044' : C.border}`,
-                  marginBottom: 0 }}>
-      <div style={{ ...s.row, justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-        <div style={s.row}>
-          <span style={{ fontSize: 20 }}>📨</span>
-          <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>
-              Recebimento de Leads — OLX
-            </p>
-            <span style={{ fontSize: 11, color: configurado ? '#22d3a0' : C.amber }}>
-              {configurado
-                ? 'Ativo — leads chegam automaticamente na aba Leads'
-                : 'Não configurado — clique para ativar'}
-            </span>
-          </div>
-        </div>
-        <button
-          style={{ ...s.btn, ...(configurado ? s.btnGhost : s.btnPrimary) }}
-          onClick={onConfigurar}
-          disabled={configurando}>
-          {configurando ? 'Configurando...' : configurado ? 'Reconfigurar' : 'Ativar Leads'}
-        </button>
-      </div>
-      {!configurado && (
-        <p style={{ fontSize: 11, color: C.faint, margin: '10px 0 0' }}>
-          Se for a primeira vez, reconecte a OLX antes de ativar para garantir o escopo <code>autoservice</code>.
-        </p>
-      )}
-    </div>
-  )
 }
 
 /* ── Badge de status do anúncio ───────────────────────────────────────── */
@@ -229,39 +92,20 @@ export default function Anuncios({ veiculos }) {
   const {
     anuncios, integracoes, loading, error,
     publicar, pausar, reativar, fechar,
-    conectar, desconectar, tokenValido, integracaoPara,
-    processarCallbackOAuth, configurarLeadsOLX,
+    tokenValido, integracaoPara,
   } = useAnuncios(userId)
 
   const [veiculoParaPublicar, setVeiculoParaPublicar] = useState(null)
   const [erroAcao,            setErroAcao]            = useState('')
-  const [configurandoLeads,   setConfigurandoLeads]   = useState(false)
 
-  // Processa callback OAuth (ML e OLX) quando userId fica disponível
-  useEffect(() => {
-    if (userId) processarCallbackOAuth()
-  }, [userId]) // eslint-disable-line
-
-  // Veículos disponíveis para anúncio: pronto ou em_venda
   const veiculosAnunciavel = (veiculos || [])
     .filter(v => ['pronto', 'em_venda'].includes(v.status))
 
-  // Mapa veiculo_id → { plataforma: anuncio }
   const anunciosPorVeiculo = anuncios.reduce((acc, a) => {
     if (!acc[a.veiculo_id]) acc[a.veiculo_id] = {}
     acc[a.veiculo_id][a.plataforma] = a
     return acc
   }, {})
-
-  function integracaoConectada(plataforma) {
-    return integracoes.some(i => i.plataforma === plataforma)
-  }
-
-  function integracaoExpirou(plataforma) {
-    const integ = integracoes.find(i => i.plataforma === plataforma)
-    if (!integ?.expires_at) return false
-    return new Date(integ.expires_at) <= new Date()
-  }
 
   async function handleAcao(fn, ...args) {
     setErroAcao('')
@@ -273,18 +117,6 @@ export default function Anuncios({ veiculos }) {
     await publicar(veiculoParaPublicar, plataforma, dados)
   }
 
-  async function handleConfigurarLeadsOLX() {
-    setConfigurandoLeads(true)
-    setErroAcao('')
-    try {
-      await configurarLeadsOLX()
-    } catch (e) {
-      setErroAcao(e.message)
-    } finally {
-      setConfigurandoLeads(false)
-    }
-  }
-
   if (loading) return (
     <div style={{ ...s.page, color: C.muted, fontSize: 13 }}>Carregando anúncios...</div>
   )
@@ -294,42 +126,9 @@ export default function Anuncios({ veiculos }) {
       <h2 style={s.titulo}>Anúncios</h2>
 
       {(error || erroAcao) && (
-        <div style={{ ...s.erro, marginBottom: 20 }}>{error || erroAcao}</div>
+        <div style={s.erro}>{error || erroAcao}</div>
       )}
 
-      {!ML_CONFIGURADO  && <AvisoConfiguracaoML />}
-      {!OLX_CONFIGURADO && <AvisoConfiguracaoOLX />}
-
-      {/* Conexões de plataforma */}
-      <p style={s.secao}>Plataformas</p>
-      <div style={{ ...s.grid, gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-        {PLATAFORMAS.map(p => (
-          <PlataformaCard
-            key={p.slug}
-            config={p}
-            conectado={integracaoConectada(p.slug)}
-            expirou={integracaoExpirou(p.slug)}
-            onConectar={() => handleAcao(conectar, p.slug)}
-            onDesconectar={() => handleAcao(desconectar, p.slug)}
-          />
-        ))}
-      </div>
-
-      {/* Leads OLX — configuração de webhook */}
-      {integracaoConectada('olx') && (
-        <>
-          <p style={s.secao}>Integração de Leads</p>
-          <div style={{ ...s.grid, marginBottom: 28 }}>
-            <OlxLeadsCard
-              integracaoPara={integracaoPara}
-              onConfigurar={handleConfigurarLeadsOLX}
-              configurando={configurandoLeads}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Veículos disponíveis */}
       <p style={s.secao}>Veículos disponíveis para anúncio ({veiculosAnunciavel.length})</p>
       {veiculosAnunciavel.length === 0 && (
         <p style={{ color: C.muted, fontSize: 13 }}>
