@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
+import { Card, KPI, GaugeBar, MiniLineChart, SectionHead, Grid, Btn } from '../components/UI'
 import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
@@ -244,21 +244,37 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               <SectionHead title="Vendas por Mês"/>
               {!calc.mesesVenda.length
                 ? <div style={{textAlign:'center',color:C.muted,padding:40}}>Sem vendas no período</div>
-                : calc.mesesVenda.slice(-8).map(m=>{
-                    const maxR=Math.max(...calc.mesesVenda.map(x=>x.receita),1)
-                    return(
-                      <div key={m.mes} style={{background:C.cardHi,borderRadius:9,padding:'10px 12px',marginBottom:8}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                          <span style={{...mono,fontSize:12,fontWeight:700}}>{m.mes}</span>
-                          <div style={{display:'flex',gap:10}}>
-                            <span style={{fontSize:11,color:'#a78bfa'}}>{m.qtd}v</span>
-                            <span style={{...mono,fontSize:11,fontWeight:700,color:m.lucro>=0?C.green:C.red}}>{fmtR(m.lucro)}</span>
+                : (()=>{
+                    const slice = calc.mesesVenda.slice(-8)
+                    const totalQtd = slice.reduce((s,m)=>s+m.qtd,0)
+                    const totalLucro = slice.reduce((s,m)=>s+m.lucro,0)
+                    return (
+                      <>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                          <div style={{display:'flex',gap:14}}>
+                            <span style={{fontSize:11,color:C.blue,display:'flex',alignItems:'center',gap:5}}>
+                              <span style={{display:'inline-block',width:16,height:2,background:C.blue,borderRadius:2,verticalAlign:'middle'}}/>
+                              Receita
+                            </span>
+                            <span style={{fontSize:11,color:C.green,display:'flex',alignItems:'center',gap:5}}>
+                              <span style={{display:'inline-block',width:16,height:2,background:C.green,borderRadius:2,verticalAlign:'middle'}}/>
+                              Lucro
+                            </span>
                           </div>
+                          <span style={{fontSize:11,color:C.muted}}>{totalQtd}v · {fmtR(totalLucro)}</span>
                         </div>
-                        <GaugeBar value={m.receita} max={maxR} color={C.blue} height={5}/>
-                      </div>
+                        <MiniLineChart
+                          data={slice.map(m=>({label:m.mes,receita:m.receita,lucro:m.lucro}))}
+                          series={[
+                            {key:'receita',color:C.blue,label:'Receita'},
+                            {key:'lucro',color:C.green,label:'Lucro'},
+                          ]}
+                          formatValue={fmtR}
+                          height={100}
+                        />
+                      </>
                     )
-                  })
+                  })()
               }
             </Card>
           </Grid>

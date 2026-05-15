@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { C } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
 
@@ -15,6 +16,84 @@ export function GaugeBar({ value, max, color, height=6 }) {
   return (
     <div style={{ background:C.border, borderRadius:99, height, overflow:'hidden', width:'100%' }}>
       <div style={{ width:`${pct}%`, height:'100%', background:color, borderRadius:99, transition:'width 0.7s cubic-bezier(.4,0,.2,1)' }} />
+    </div>
+  )
+}
+
+// Line chart with hover tracker. series: [{key, color, label}], data: [{label, ...values}], formatValue: fn
+export function MiniLineChart({ data, series, formatValue, height = 80 }) {
+  const [hoverIdx, setHoverIdx] = useState(null)
+  const W = 400, H = height, PX = 4, PY = 6
+
+  if (!data || data.length < 2) return null
+
+  const allVals = series.flatMap(s => data.map(d => Number(d[s.key]) || 0))
+  const vMin = Math.min(0, ...allVals)
+  const vMax = Math.max(...allVals, 1)
+  const vRange = vMax - vMin
+
+  const toX = i => PX + (i / (data.length - 1)) * (W - PX * 2)
+  const toY = v => PY + (1 - (Number(v) - vMin) / vRange) * (H - PY * 2)
+  const makeLine = s => data.map((d, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(d[s.key]).toFixed(1)}`).join(' ')
+  const makeArea = s => {
+    const base = toY(Math.max(0, vMin)).toFixed(1)
+    return `${makeLine(s)} L${toX(data.length - 1).toFixed(1)},${base} L${toX(0).toFixed(1)},${base} Z`
+  }
+
+  const tipShift = hoverIdx == null ? '' :
+    hoverIdx / (data.length - 1) > 0.65 ? 'translateX(-100%)' :
+    hoverIdx / (data.length - 1) > 0.35 ? 'translateX(-50%)' : 'translateX(0)'
+
+  return (
+    <div style={{ position: 'relative', userSelect: 'none' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height, display: 'block', overflow: 'visible' }}
+        onMouseMove={e => {
+          const r = e.currentTarget.getBoundingClientRect()
+          setHoverIdx(Math.max(0, Math.min(data.length - 1, Math.round(((e.clientX - r.left) / r.width) * (data.length - 1)))))
+        }}
+        onMouseLeave={() => setHoverIdx(null)}
+      >
+        {series.map(s => (
+          <g key={s.key}>
+            <path d={makeArea(s)} fill={`${s.color}15`} />
+            <path d={makeLine(s)} fill="none" stroke={s.color} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        ))}
+        {hoverIdx !== null && (
+          <g>
+            <line x1={toX(hoverIdx)} y1={PY} x2={toX(hoverIdx)} y2={H - PY}
+              stroke={C.borderHi} strokeWidth={1} strokeDasharray="3,3" />
+            {series.map(s => (
+              <circle key={s.key} cx={toX(hoverIdx)} cy={toY(data[hoverIdx][s.key])} r={4}
+                fill={s.color} stroke={C.card} strokeWidth={2} />
+            ))}
+          </g>
+        )}
+      </svg>
+
+      {hoverIdx !== null && (
+        <div style={{
+          position: 'absolute', top: 6,
+          left: `${(hoverIdx / (data.length - 1)) * 100}%`,
+          transform: tipShift,
+          background: C.surface, border: `1px solid ${C.borderHi}`,
+          borderRadius: 7, padding: '5px 10px', fontSize: 10,
+          color: C.text, pointerEvents: 'none', whiteSpace: 'nowrap', zIndex: 10,
+          boxShadow: '0 2px 8px #0006',
+        }}>
+          <div style={{ color: C.muted, fontWeight: 700, marginBottom: 3 }}>{data[hoverIdx].label}</div>
+          {series.map(s => (
+            <div key={s.key} style={{ color: s.color, fontWeight: 700 }}>
+              {s.label}: {formatValue ? formatValue(data[hoverIdx][s.key] ?? 0) : data[hoverIdx][s.key]}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        <span style={{ fontSize: 9, color: C.faint }}>{data[0].label}</span>
+        <span style={{ fontSize: 9, color: C.faint }}>{data[data.length - 1].label}</span>
+      </div>
     </div>
   )
 }
