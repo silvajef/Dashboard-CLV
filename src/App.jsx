@@ -71,7 +71,13 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
 
-  const sidebarW = isTablet ? 60 : 220
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Sidebar sobrepõe o conteúdo ao expandir — main tem margem fixa de 60px
+  const SIDEBAR_COLLAPSED = 60
+  const SIDEBAR_EXPANDED  = 220
+  const expanded = sidebarOpen && !isMobile
+  // fade helper: texto e detalhes aparecem apenas quando expandido
+  const fade = { opacity: expanded ? 1 : 0, transition: 'opacity 0.12s', whiteSpace:'nowrap', overflow:'hidden' }
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Syne','Segoe UI',sans-serif" }}>
@@ -90,93 +96,88 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
 
       {/* ── SIDEBAR DESKTOP / TABLET ── */}
       {!isMobile && (
-        <nav style={{
-          width: sidebarW, background:C.surface, borderRight:`1px solid ${C.border}`,
-          position:'fixed', top:0, left:0, bottom:0, zIndex:100,
-          display:'flex', flexDirection:'column', overflowY:'auto',
-        }}>
+        <nav
+          onMouseEnter={() => setSidebarOpen(true)}
+          onMouseLeave={() => setSidebarOpen(false)}
+          style={{
+            width: expanded ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED,
+            transition: 'width 0.22s cubic-bezier(.4,0,.2,1)',
+            background: C.surface, borderRight:`1px solid ${C.border}`,
+            position:'fixed', top:0, left:0, bottom:0, zIndex:200,
+            display:'flex', flexDirection:'column',
+            overflow:'hidden',
+            boxShadow: expanded ? '4px 0 24px #00000055' : 'none',
+          }}
+        >
           {/* Logo */}
-          <div style={{ padding: isTablet ? '16px 10px' : '20px 16px', borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10, justifyContent: isTablet ? 'center' : 'flex-start' }}>
+          <div style={{ padding:'16px 12px', borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <div style={{ width:36, height:36, background:C.blue, borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'#fff', flexShrink:0, letterSpacing:-0.5 }}>CLV</div>
-              {!isTablet && (
-                <div>
-                  <div style={{ fontWeight:900, fontSize:14, letterSpacing:-0.5 }}>{APP_NAME}</div>
-                  <div style={{ fontSize:10, color:C.muted, marginTop:1 }}>Estoque · Análise</div>
-                </div>
-              )}
+              <div style={fade}>
+                <div style={{ fontWeight:900, fontSize:14, letterSpacing:-0.5 }}>{APP_NAME}</div>
+                <div style={{ fontSize:10, color:C.muted, marginTop:1 }}>Estoque · Análise</div>
+              </div>
             </div>
           </div>
 
-          {/* Search (desktop only) */}
-          {!isTablet && (
-            <div style={{ padding:'10px 12px', borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
-              <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:'7px 10px', display:'flex', alignItems:'center', gap:6, cursor:'text' }}>
-                <span style={{ color:C.faint, fontSize:13 }}>🔍</span>
-                <span style={{ color:C.faint, fontSize:12, flex:1 }}>Buscar veículo...</span>
-                <span style={{ color:C.faint, fontSize:9, border:`1px solid ${C.border}`, borderRadius:4, padding:'1px 5px' }}>⌘K</span>
-              </div>
+          {/* Search */}
+          <div style={{ padding:'10px 12px', borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
+            <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, padding:'7px 10px', display:'flex', alignItems:'center', gap:6, cursor:'text', overflow:'hidden' }}>
+              <span style={{ color:C.faint, fontSize:13, flexShrink:0 }}>🔍</span>
+              <span style={{ ...fade, fontSize:12, color:C.faint, flex:1 }}>Buscar veículo...</span>
+              <span style={{ ...fade, fontSize:9, color:C.faint, border:`1px solid ${C.border}`, borderRadius:4, padding:'1px 5px', flexShrink:0 }}>⌘K</span>
             </div>
-          )}
+          </div>
 
           {/* Nav items */}
-          <div style={{ flex:1, padding: isTablet ? '10px 6px' : '10px 8px', overflowY:'auto' }}>
-            {!isTablet && (
-              <div style={{ fontSize:10, fontWeight:700, color:C.faint, letterSpacing:'0.1em', textTransform:'uppercase', padding:'0 8px', marginBottom:6 }}>Workspace</div>
-            )}
+          <div style={{ flex:1, padding:'10px 8px', overflowY: expanded ? 'auto' : 'hidden' }}>
+            <div style={{ ...fade, fontSize:10, fontWeight:700, color:C.faint, letterSpacing:'0.1em', textTransform:'uppercase', padding:'0 4px', marginBottom:6 }}>Workspace</div>
             {TABS.map(t => (
               <button key={t.id} onClick={() => setAba(t.id)}
-                title={isTablet ? t.label : undefined}
-                onMouseEnter={e => {
-                  if (abaAtual !== t.id) e.currentTarget.style.background = C.cardHi
-                }}
-                onMouseLeave={e => {
-                  if (abaAtual !== t.id) e.currentTarget.style.background = 'transparent'
-                }}
+                title={!expanded ? t.label : undefined}
+                onMouseEnter={e => { if (abaAtual !== t.id) e.currentTarget.style.background = C.cardHi }}
+                onMouseLeave={e => { if (abaAtual !== t.id) e.currentTarget.style.background = 'transparent' }}
                 style={{
                   width:'100%', background: abaAtual===t.id ? C.amberDim : 'transparent',
                   color: abaAtual===t.id ? C.amber : C.muted,
-                  border:'none', borderRadius:8,
-                  padding: isTablet ? '10px 0' : '9px 10px',
+                  border:'none', borderRadius:8, padding:'9px 8px',
                   fontSize:13, fontWeight: abaAtual===t.id ? 700 : 400,
                   cursor:'pointer', display:'flex', alignItems:'center',
-                  justifyContent: isTablet ? 'center' : 'flex-start',
                   gap:10, marginBottom:2, textAlign:'left',
                   fontFamily:"'Syne',sans-serif", transition:'background 0.15s, color 0.15s',
+                  overflow:'hidden',
                 }}>
-                <span style={{ fontSize:16, flexShrink:0, width: isTablet ? undefined : 20, textAlign:'center' }}>{t.icon}</span>
-                {!isTablet && <span style={{ flex:1 }}>{t.label}</span>}
+                <span style={{ fontSize:16, flexShrink:0, width:20, textAlign:'center' }}>{t.icon}</span>
+                <span style={fade}>{t.label}</span>
               </button>
             ))}
           </div>
 
           {/* Rodapé: status + usuário + sair */}
-          <div style={{ padding: isTablet ? '10px 6px' : '12px 12px', borderTop:`1px solid ${C.border}`, flexShrink:0 }}>
-            {!isTablet && (
-              <>
-                <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                  <div style={{ width:6, height:6, borderRadius:'50%', background:fleet.error?C.red:C.green, boxShadow:`0 0 5px ${fleet.error?C.red:C.green}` }}/>
-                  <span style={{ fontSize:10, color:C.muted, flex:1 }}>{fleet.error ? 'Erro' : 'Ao vivo'}</span>
-                  <span style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:20, background:`${badge.cor}20`, color:badge.cor }}>{badge.label}</span>
-                </div>
-                <div style={{ fontSize:11, color:C.muted, marginBottom:8, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                  {perfil?.nome || session.user.email}
-                </div>
-              </>
-            )}
+          <div style={{ padding:'10px 8px', borderTop:`1px solid ${C.border}`, flexShrink:0 }}>
+            <div style={{ ...fade, marginBottom:6 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
+                <div style={{ width:6, height:6, borderRadius:'50%', background:fleet.error?C.red:C.green, boxShadow:`0 0 5px ${fleet.error?C.red:C.green}`, flexShrink:0 }}/>
+                <span style={{ fontSize:10, color:C.muted, flex:1 }}>{fleet.error ? 'Erro' : 'Ao vivo'}</span>
+                <span style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:20, background:`${badge.cor}20`, color:badge.cor, flexShrink:0 }}>{badge.label}</span>
+              </div>
+              <div style={{ fontSize:11, color:C.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginBottom:6 }}>
+                {perfil?.nome || session.user.email}
+              </div>
+            </div>
             <button onClick={signOut}
-              title={isTablet ? 'Sair' : undefined}
+              title={!expanded ? 'Sair' : undefined}
               onMouseEnter={e => { e.currentTarget.style.background = C.cardHi }}
               onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
               style={{
                 width:'100%', background:'none', border:`1px solid ${C.border}`,
-                borderRadius:7, padding: isTablet ? '8px 0' : '6px 10px',
-                color:C.muted, fontSize:12, cursor:'pointer',
-                fontFamily:"'Syne',sans-serif", display:'flex',
-                alignItems:'center', justifyContent:'center', gap:6,
-                transition:'background 0.15s',
+                borderRadius:7, padding:'7px 8px', color:C.muted, fontSize:12,
+                cursor:'pointer', fontFamily:"'Syne',sans-serif",
+                display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                transition:'background 0.15s', overflow:'hidden',
               }}>
-              <span>🚪</span>{!isTablet && 'Sair'}
+              <span style={{ flexShrink:0 }}>🚪</span>
+              <span style={fade}>Sair</span>
             </button>
           </div>
         </nav>
@@ -200,8 +201,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
         </header>
       )}
 
-      {/* ── MAIN ── */}
-      <main style={{ marginLeft: isMobile ? 0 : sidebarW, padding: isMobile ? '16px 12px 80px' : '28px 24px', minHeight:'100vh' }}>
+      {/* ── MAIN — margem fixa de 60px (sidebar sobrepõe ao expandir) ── */}
+      <main style={{ marginLeft: isMobile ? 0 : SIDEBAR_COLLAPSED, padding: isMobile ? '16px 12px 80px' : '28px 24px', minHeight:'100vh' }}>
         {fleet.error && <ErrorBanner message={fleet.error} onRetry={fleet.reload}/>}
 
         {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso}/>}
