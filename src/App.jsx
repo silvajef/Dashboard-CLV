@@ -57,6 +57,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
   const [abrirVeiculoId, setAbrirVeiculoId] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
@@ -70,8 +71,6 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
-
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   // Sidebar sobrepõe o conteúdo ao expandir — main tem margem fixa de 60px
   const SIDEBAR_COLLAPSED = 60
   const SIDEBAR_EXPANDED  = 220
