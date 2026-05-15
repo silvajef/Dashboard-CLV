@@ -101,16 +101,30 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
 
             <div style={{ display:'flex', gap:2 }}>
               {TABS.map(t => (
-                <button key={t.id} onClick={() => setAba(t.id)} style={{
-                  background: abaAtual===t.id ? C.amberDim : 'transparent',
-                  color: abaAtual===t.id ? C.amber : C.muted,
-                  border: 'none',
-                  borderBottom: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent',
-                  padding:'0 16px', height:58, fontSize:13,
-                  fontWeight: abaAtual===t.id ? 700 : 400,
-                  cursor:'pointer', display:'flex', alignItems:'center', gap:6,
-                  fontFamily:"'Syne',sans-serif",
-                }}>
+                <button key={t.id} onClick={() => setAba(t.id)}
+                  onMouseEnter={e => {
+                    if (abaAtual !== t.id) {
+                      e.currentTarget.style.background = C.border
+                      e.currentTarget.style.color = C.text
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (abaAtual !== t.id) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = C.muted
+                    }
+                  }}
+                  style={{
+                    background: abaAtual===t.id ? C.amberDim : 'transparent',
+                    color: abaAtual===t.id ? C.amber : C.muted,
+                    border: 'none',
+                    borderBottom: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent',
+                    padding:'0 16px', height:58, fontSize:13,
+                    fontWeight: abaAtual===t.id ? 700 : 400,
+                    cursor:'pointer', display:'flex', alignItems:'center', gap:6,
+                    fontFamily:"'Syne',sans-serif",
+                    transition:'background 0.15s, color 0.15s',
+                  }}>
                   {t.icon} {!isTablet || TABS.length <= 4 ? t.label : ''}
                 </button>
               ))}
@@ -182,14 +196,22 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
       {isMobile && (
         <nav style={{ position:'fixed', bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:'flex', zIndex:100, paddingBottom:'env(safe-area-inset-bottom)' }}>
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setAba(t.id)} style={{
-              flex:1, background:'none', border:'none',
-              color: abaAtual===t.id ? C.amber : C.muted,
-              padding:'10px 4px 8px', cursor:'pointer',
-              display:'flex', flexDirection:'column', alignItems:'center', gap:3,
-              fontFamily:"'Syne',sans-serif",
-              borderTop: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent',
-            }}>
+            <button key={t.id} onClick={() => setAba(t.id)}
+              onMouseEnter={e => {
+                if (abaAtual !== t.id) e.currentTarget.style.background = C.border
+              }}
+              onMouseLeave={e => {
+                if (abaAtual !== t.id) e.currentTarget.style.background = 'none'
+              }}
+              style={{
+                flex:1, background:'none', border:'none',
+                color: abaAtual===t.id ? C.amber : C.muted,
+                padding:'10px 4px 8px', cursor:'pointer',
+                display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                fontFamily:"'Syne',sans-serif",
+                borderTop: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent',
+                transition:'background 0.15s',
+              }}>
               <span style={{ fontSize:18 }}>{t.icon}</span>
               <span style={{ fontSize:9, fontWeight: abaAtual===t.id ? 700 : 400 }}>{t.label}</span>
             </button>
