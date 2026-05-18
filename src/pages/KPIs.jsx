@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
-import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
+import { SkeletonCard, SkeletonTable } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
+import Heatmap from '../components/Heatmap'
+import { C, FONTS, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
@@ -16,7 +19,7 @@ const chartTheme = {
   surface: C.card,
 }
 
-export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso }) {
+export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso, loading }) {
   const [periodo, setPeriodo] = useState('total')
   const [secao, setSecao]     = useState('overview')
   const [editMetas, setEdit]  = useState(false)
@@ -24,6 +27,21 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
   const [metasLocal, setMetasLocal] = useState(null)
 
   const metas = metasLocal || metasDB || { vendas_mes:3, margem_min:8, dias_max_estoque:90, custo_max_pct:5 }
+
+  if (loading && !veiculos.length) {
+    return (
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ height: 28, width: 160, background: C.cardHi, borderRadius: 6, marginBottom: 8, animation: 'clvShimmer 1.4s ease-in-out infinite', backgroundSize: '200% 100%', backgroundImage: `linear-gradient(90deg, ${C.cardHi} 0%, ${C.card} 50%, ${C.cardHi} 100%)` }}/>
+          <div style={{ height: 14, width: 280, background: C.card, borderRadius: 4, animation: 'clvShimmer 1.4s ease-in-out infinite', backgroundSize: '200% 100%', backgroundImage: `linear-gradient(90deg, ${C.cardHi} 0%, ${C.card} 50%, ${C.cardHi} 100%)` }}/>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
+          {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i}/>)}
+        </div>
+        <SkeletonTable rows={6}/>
+      </div>
+    )
+  }
   const setM = (k,v) => setMetasLocal(p => ({ ...(p || metas), [k]: Number(v) }))
 
   const vPeriodo = useMemo(() => {
@@ -84,13 +102,40 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const rankingCusto = ativos.map(v=>({...v,diasEstoque:diasNoEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
     const rankingDias  = [...ativos].sort((a,b)=>diasNoEstoque(b)-diasNoEstoque(a))
 
-    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
+    // Heatmap: marca × tipo — dias médios no estoque
+    const marcasHeat = [...new Set(todos.map(v => v.marca_nome).filter(Boolean))].slice(0, 10)
+    const tiposHeat  = [...new Set(todos.map(v => v.tipo).filter(Boolean))]
+    const heatMatrix = marcasHeat.map(m =>
+      tiposHeat.map(tp => {
+        const vs = todos.filter(v => v.marca_nome === m && v.tipo === tp)
+        if (!vs.length) return null
+        return Math.round(vs.reduce((s, v) => s + diasNoEstoque(v), 0) / vs.length)
+      })
+    )
+
+    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias, marcasHeat, tiposHeat, heatMatrix }
   }, [vPeriodo])
 
   const mesAtual = useMemo(()=>{
     const m = mesAno(new Date().toISOString())
     return calc.mesesVenda.find(x=>x.mes===m)||{qtd:0,receita:0,lucro:0}
   },[calc])
+
+  // Comparação de períodos: últimos 4 meses vs 4 meses anteriores
+  const comparacao = useMemo(() => {
+    const slice = calc.mesesVenda.slice(-8)
+    if (slice.length < 2) return null
+    const meio = Math.ceil(slice.length / 2)
+    const atual    = slice.slice(meio).map(m => m.receita)
+    const anterior = slice.slice(0, meio).map(m => m.receita)
+    // Alinha os dois arrays no mesmo comprimento
+    const len = Math.min(atual.length, anterior.length)
+    const labels = slice.slice(meio - len < 0 ? 0 : meio - len, meio).map(m => m.mes)
+    const totalAtual    = atual.slice(-len).reduce((s,v)=>s+v,0)
+    const totalAnterior = anterior.slice(-len).reduce((s,v)=>s+v,0)
+    const delta = totalAnterior > 0 ? ((totalAtual - totalAnterior) / totalAnterior) * 100 : null
+    return { atual: atual.slice(-len), anterior: anterior.slice(-len), labels, delta, totalAtual, totalAnterior }
+  }, [calc.mesesVenda])
 
   const navBtn = (id, label, icon) => (
     <button onClick={()=>setSecao(id)} style={{background:secao===id?C.amberDim:'transparent',color:secao===id?C.amber:C.muted,border:'none',borderBottom:secao===id?`2px solid ${C.amber}`:'2px solid transparent',padding:'0 14px',height:48,fontSize:12,fontWeight:secao===id?700:500,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontFamily:"'Syne',sans-serif",transition:'all 0.15s'}}>
@@ -206,6 +251,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       {/* ── VISÃO GERAL ── */}
       {secao==='overview' && (
         <div>
+          {!veiculos.length && (
+            <EmptyState
+              icon="truck"
+              title="Nenhum veículo no estoque"
+              description="Adicione o primeiro veículo para começar a registrar manutenções e vendas."
+              style={{ marginBottom: 24 }}
+            />
+          )}
           <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
             {[
               {label:'Estoque Ativo',   value:calc.ativos.length,            icon:'🚛',color:C.blue},
@@ -229,6 +282,47 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               </div>
             ))}
           </Grid>
+          {comparacao && (
+            <Card style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                <div>
+                  <SectionHead title="Receita: Período Atual vs Anterior"/>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: -8, marginBottom: 8 }}>
+                    {fmtR(comparacao.totalAtual)} atual &nbsp;·&nbsp; {fmtR(comparacao.totalAnterior)} anterior
+                  </div>
+                </div>
+                {comparacao.delta !== null && (
+                  <span style={{
+                    fontSize: 13, fontWeight: 700, fontFamily: FONTS.mono,
+                    color: comparacao.delta >= 0 ? C.green : C.red,
+                    background: comparacao.delta >= 0 ? C.greenDim : C.redDim,
+                    padding: '3px 10px', borderRadius: 20,
+                  }}>
+                    {comparacao.delta >= 0 ? '+' : ''}{comparacao.delta.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 14, marginBottom: 10 }}>
+                {[['Atual', C.blue], ['Anterior', C.muted]].map(([n, c]) => (
+                  <span key={n} style={{ fontSize: 11, color: c, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ display: 'inline-block', width: 16, height: 2, background: c, borderRadius: 2 }}/>
+                    {n}
+                  </span>
+                ))}
+              </div>
+              <LineTracker
+                series={[
+                  { name: 'Atual',    color: C.blue,  data: comparacao.atual    },
+                  { name: 'Anterior', color: C.muted, data: comparacao.anterior },
+                ]}
+                labels={comparacao.labels}
+                height={120}
+                theme={chartTheme}
+                formatY={v => fmtR(v)}
+                formatTooltip={v => fmtR(v)}
+              />
+            </Card>
+          )}
           <Grid cols={2} gap={16}>
             <Card>
               <SectionHead title="Performance por Tipo"/>
@@ -345,6 +439,19 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               })}
             </Card>
           </Grid>
+          {calc.marcasHeat.length > 0 && calc.tiposHeat.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <Heatmap
+                rows={calc.marcasHeat}
+                cols={calc.tiposHeat}
+                data={calc.heatMatrix}
+                valueLabel="d"
+                thresholds={[45, 75, 90]}
+                title="Tempo médio no estoque"
+                subtitle="Dias por marca × tipo · onde o estoque trava?"
+              />
+            </div>
+          )}
         </div>
       )}
 

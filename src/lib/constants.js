@@ -60,6 +60,12 @@ export const STATUS_SERV_CFG = {
   cancelado: { label: 'Cancelado',    color: '#5a6480' },
 }
 
+export const FONTS = {
+  display: "'Syne', system-ui, sans-serif",
+  body:    "'Inter', system-ui, sans-serif",
+  mono:    "'JetBrains Mono', ui-monospace, monospace",
+}
+
 export const C = {
   // ── superfícies ────────────────────────────────────────────────────────────
   bg:      '#08090d',

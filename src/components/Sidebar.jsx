@@ -200,17 +200,21 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
       </div>
 
       {/* ── Search ── */}
-      <div style={{
-        margin: expanded ? '10px 8px 4px' : '10px 6px 4px',
-        background: C.card, border: `1px solid ${C.border}`, borderRadius: 8,
-        padding: expanded ? '7px 10px' : 0,
-        height: 32,
-        display: 'flex', alignItems: 'center',
-        justifyContent: expanded ? 'flex-start' : 'center',
-        gap: expanded ? 6 : 0, cursor: 'text', overflow: 'hidden',
-        transition: 'padding 200ms ease, margin 200ms ease, gap 200ms ease',
-        flexShrink: 0,
-      }} title={!expanded ? 'Buscar veículo (⌘K)' : undefined}>
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('clv:palette'))}
+        style={{
+          margin: expanded ? '10px 8px 4px' : '10px 6px 4px',
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: expanded ? '7px 10px' : 0,
+          height: 32,
+          display: 'flex', alignItems: 'center',
+          justifyContent: expanded ? 'flex-start' : 'center',
+          gap: expanded ? 6 : 0, cursor: 'pointer', overflow: 'hidden',
+          transition: 'padding 200ms ease, margin 200ms ease, gap 200ms ease',
+          flexShrink: 0, width: expanded ? 'calc(100% - 16px)' : 'calc(100% - 12px)',
+          fontFamily: "'Syne', sans-serif",
+        }}
+        title={!expanded ? 'Buscar tudo (⌘K)' : undefined}>
         <span style={{
           width: 24, height: 24,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -236,7 +240,7 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
         }}>
           ⌘K
         </span>
-      </div>
+      </button>
 
       {/* ── Nav ── */}
       <div style={{

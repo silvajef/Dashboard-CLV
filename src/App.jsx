@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useFleetData } from './hooks/useFleetData'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
 import { LoadingScreen, ErrorBanner } from './components/UI'
 import Sidebar from './components/Sidebar'
 import Icon from './components/Icon'
-import { APP_NAME, APP_VERSION, C } from './lib/constants'
+import { APP_NAME, APP_VERSION, C, FONTS } from './lib/constants'
 import Veiculos    from './pages/Veiculos'
 import PosVenda    from './pages/PosVenda'
 import Prestadores from './pages/Prestadores'
@@ -16,6 +16,7 @@ import Usuarios      from './pages/Usuarios'
 import Anuncios      from './pages/Anuncios'
 import Leads         from './pages/Leads'
 import Configuracoes from './pages/Configuracoes'
+import CommandPalette from './components/CommandPalette'
 
 const TABS_BASE = [
   { id:'dashboard',   icon:'dashboard',  label:'KPIs'        },
@@ -72,11 +73,29 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
-  // Sidebar uses fixed 60px — overlays content when expanded
   const SIDEBAR_COLLAPSED = 60
 
+  const commands = useMemo(() => {
+    const cmds = []
+    TABS.forEach(t => cmds.push({
+      id: 'go-' + t.id, icon: t.icon,
+      label: 'Ir para ' + t.label,
+      section: 'Navegação',
+      action: () => setAba(t.id),
+    }))
+    fleet.veiculos.forEach(v => cmds.push({
+      id: 'v-' + v.id, icon: 'truck',
+      label: `${v.marca_nome || ''} ${v.modelo_nome || v.modelo || ''}`.trim(),
+      hint: `${v.placa || ''} · ${v.tipo || ''}`,
+      section: 'Veículos',
+      action: () => { setAba('veiculos'); setAbrirVeiculoId(v.id) },
+    }))
+    return cmds
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fleet.veiculos, aba])
+
   return (
-    <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Syne','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily: FONTS.body }}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         html{-webkit-text-size-adjust:100%}
@@ -88,6 +107,10 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
         input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
         button{-webkit-tap-highlight-color:transparent}
         select,input,textarea{-webkit-appearance:none}
+        @keyframes clvShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+        @keyframes clvFadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes clvSlideDown{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes clvSlideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
       `}</style>
 
       {/* ── SIDEBAR DESKTOP / TABLET ── */}
@@ -140,25 +163,99 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
         {abaAtual==='configuracoes' && <Configuracoes />}
       </main>
 
+      <CommandPalette commands={commands}/>
+
       {/* ── BOTTOM NAV MOBILE ── */}
-      {isMobile && (
-        <nav style={{ position:'fixed', bottom:0, left:0, right:0, background:C.surface, borderTop:`1px solid ${C.border}`, display:'flex', zIndex:100, paddingBottom:'env(safe-area-inset-bottom)' }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setAba(t.id)}
-              style={{
-                flex:1, background:'none', border:'none',
-                color: abaAtual===t.id ? C.blue : C.muted,
-                padding:'10px 4px 8px', cursor:'pointer',
-                display:'flex', flexDirection:'column', alignItems:'center', gap:3,
-                fontFamily:"'Syne',sans-serif",
-                borderTop: abaAtual===t.id ? `2px solid ${C.blue}` : '2px solid transparent',
-              }}>
-              <Icon name={t.icon} size={18} strokeWidth={abaAtual===t.id ? 2 : 1.6}/>
-              <span style={{ fontSize:9, fontWeight: abaAtual===t.id ? 700 : 400 }}>{t.label}</span>
-            </button>
-          ))}
-        </nav>
-      )}
+      {isMobile && <MobileBottomNav tabs={TABS} aba={abaAtual} setAba={setAba}/>}
     </div>
+  )
+}
+
+const PRIMARY_IDS = ['dashboard', 'veiculos', 'anuncios', 'leads']
+
+function MobileBottomNav({ tabs, aba, setAba }) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const primary = tabs.filter(t => PRIMARY_IDS.includes(t.id))
+  const more    = tabs.filter(t => !PRIMARY_IDS.includes(t.id))
+
+  const navAba = (id) => { setAba(id); setDrawerOpen(false) }
+
+  return (
+    <>
+      {drawerOpen && (
+        <>
+          <div onClick={() => setDrawerOpen(false)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:99,
+            animation:'clvFadeIn 200ms ease',
+          }}/>
+          <div style={{
+            position:'fixed', left:0, right:0, bottom:56, zIndex:100,
+            background:C.surface, borderTop:`1px solid ${C.border}`,
+            borderRadius:'14px 14px 0 0', padding:16,
+            boxShadow:'0 -8px 24px rgba(0,0,0,0.3)',
+            paddingBottom:'calc(16px + env(safe-area-inset-bottom))',
+            animation:'clvSlideUp 240ms cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <div style={{ width:36, height:4, background:C.border, borderRadius:2, margin:'0 auto 14px' }}/>
+            <div style={{ fontSize:12, fontWeight:600, color:C.text, marginBottom:10, fontFamily: FONTS.body }}>Mais</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6 }}>
+              {more.map(item => {
+                const isActive = aba === item.id
+                return (
+                  <button key={item.id} onClick={() => navAba(item.id)} style={{
+                    background: isActive ? C.blueDim : C.card,
+                    border:'none', borderRadius:10, padding:'12px 8px',
+                    cursor:'pointer', display:'flex', flexDirection:'column',
+                    alignItems:'center', gap:6,
+                    color: isActive ? C.blue : C.muted,
+                    fontFamily: FONTS.body,
+                  }}>
+                    <Icon name={item.icon} size={18} strokeWidth={isActive ? 2 : 1.6}/>
+                    <span style={{ fontSize:10, fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <nav style={{
+        position:'fixed', bottom:0, left:0, right:0,
+        background:C.surface, borderTop:`1px solid ${C.border}`,
+        display:'flex', zIndex:100,
+        paddingBottom:'env(safe-area-inset-bottom)',
+      }}>
+        {primary.map(t => {
+          const isActive = aba === t.id
+          return (
+            <button key={t.id} onClick={() => navAba(t.id)} style={{
+              flex:1, background:'none', border:'none',
+              color: isActive ? C.blue : C.muted,
+              padding:'10px 4px 8px', cursor:'pointer',
+              display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+              fontFamily: FONTS.body,
+              borderTop: isActive ? `2px solid ${C.blue}` : '2px solid transparent',
+            }}>
+              <Icon name={t.icon} size={18} strokeWidth={isActive ? 2 : 1.6}/>
+              <span style={{ fontSize:9, fontWeight: isActive ? 700 : 400 }}>{t.label}</span>
+            </button>
+          )
+        })}
+        {more.length > 0 && (
+          <button onClick={() => setDrawerOpen(o => !o)} style={{
+            flex:1, background:'none', border:'none',
+            color: drawerOpen ? C.blue : C.muted,
+            padding:'10px 4px 8px', cursor:'pointer',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+            fontFamily: FONTS.body,
+            borderTop: drawerOpen ? `2px solid ${C.blue}` : '2px solid transparent',
+          }}>
+            <Icon name={drawerOpen ? 'x' : 'list'} size={18} strokeWidth={drawerOpen ? 2 : 1.6}/>
+            <span style={{ fontSize:9, fontWeight: drawerOpen ? 700 : 400 }}>{drawerOpen ? 'Fechar' : 'Mais'}</span>
+          </button>
+        )}
+      </nav>
+    </>
   )
 }
