@@ -2,8 +2,9 @@ export const APP_NAME    = 'Dashboard CLV'
 export const APP_VERSION = '3.8'
 
 export const TIPOS_VEICULO = [
-  'Van', 'Pick-up', 'Caminhão Leve', 'Caminhão Médio',
-  'Caminhão Pesado', 'Micro-ônibus', 'Outro'
+  'Carro', 'Van', 'Pick-up', 'Utilitário',
+  'Caminhão Leve', 'Caminhão Médio', 'Caminhão Pesado',
+  'Micro-ônibus', 'Moto', 'Outro'
 ]
 export const TIPOS_MANUT = [
   'Mecânica', 'Elétrica', 'Funilaria', 'Pintura', 'Pneus',

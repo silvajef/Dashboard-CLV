@@ -19,7 +19,8 @@ async function get(path) {
 export function tipoFipe(tipo = '') {
   const t = tipo.toLowerCase()
   if (t.includes('caminhão') || t.includes('caminhao')) return 'caminhoes'
-  return 'carros'  // vans, pick-ups, micro-ônibus → carros
+  if (t === 'moto') return 'motos'
+  return 'carros'  // carros, vans, pick-ups, utilitários, micro-ônibus → carros
 }
 
 export const getMarcas  = (tipo)                              => get(`/${tipoFipe(tipo)}/marcas`)
