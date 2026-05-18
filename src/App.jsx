@@ -103,8 +103,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
       {isMobile && (
         <header style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:'12px 16px', position:'sticky', top:0, zIndex:100, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:28, height:28, background:C.blue, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:900, color:'#fff' }}>CLV</div>
-            <span style={{ fontWeight:900, fontSize:14, letterSpacing:-0.5 }}>{APP_NAME}</span>
+            <div style={{ width:28, height:28, background:C.blue, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:800, color:'#fff' }}>CLV</div>
+            <span style={{ fontWeight:700, fontSize:14, letterSpacing:-0.5 }}>{APP_NAME}</span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${badge.cor}20`, color:badge.cor }}>{badge.label}</span>
@@ -112,7 +112,9 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
               <div style={{ width:6, height:6, borderRadius:'50%', background:fleet.error?C.red:C.green }}/>
               <span style={{ fontSize:10, color:C.muted }}>{fleet.error ? 'Offline' : 'Online'}</span>
             </div>
-            <button onClick={signOut} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', padding:2 }}>🚪</button>
+            <button onClick={signOut} style={{ background:'none', border:'none', cursor:'pointer', padding:6, color:C.muted, display:'flex', alignItems:'center' }}>
+              <Icon name="logout" size={18}/>
+            </button>
           </div>
         </header>
       )}

@@ -5,6 +5,8 @@ import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
 import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, getCf, progressoProcesso } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
 import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
+import Icon from '../components/Icon'
+import StatusBadge from '../components/StatusBadge'
 
 function nomeVeiculo(v) {
   const marca  = v.marca_nome  || ''
@@ -96,7 +98,7 @@ export default function Veiculos({
             <span style={{ fontSize:20 }}>{iconeVeiculo(vAtual.tipo)}</span>
             <span style={{ fontWeight:700, fontSize:16 }}>{nomeVeiculo(vAtual)}</span>
             {vAtual.placa && <span style={{ fontSize:12, color:C.muted, fontFamily:'monospace', background:C.surface, padding:'2px 8px', borderRadius:6 }}>{vAtual.placa}</span>}
-            <Badge status={vAtual.status} cfg={STATUS_VEICULO_CFG}/>
+            <StatusBadge status={vAtual.status} size="sm"/>
             {procAtual && (
               <span style={{ fontSize:11, background:`${C.purple}20`, color:C.purple, padding:'3px 10px', borderRadius:20, fontWeight:700 }}>
                 {progressoProcesso(procAtual.etapas).pct}% concluído
@@ -238,7 +240,7 @@ export default function Veiculos({
                       {/* Total */}
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
                         <span style={{ fontSize:13, fontWeight:700, color:C.text }}>TOTAL GASTO</span>
-                        <span style={{ fontSize:22, fontWeight:900, color:C.red, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(total)}</span>
+                        <span style={{ fontSize:22, fontWeight:800, color:C.red, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(total)}</span>
                       </div>
 
                       {/* Margem vs anúncio */}
@@ -282,8 +284,8 @@ export default function Veiculos({
                         .filter(([k]) => k !== 'vendido' && k !== 'em_venda')
                         .map(([k,cfg])=>(
                           <button key={k} onClick={()=>handle(saveVeiculo,{...vAtual,status:k,servicos:undefined})}
-                            style={{ background:vAtual.status===k?cfg.color+'33':'transparent', color:cfg.color, border:`1px solid ${cfg.color}55`, borderRadius:20, padding:'7px 16px', fontSize:12, cursor:'pointer', fontWeight:700, fontFamily:'inherit' }}>
-                            {cfg.icon} {cfg.label}
+                            style={{ background:vAtual.status===k?cfg.color+'33':'transparent', color:cfg.color, border:`1px solid ${cfg.color}55`, borderRadius:20, padding:'7px 16px', fontSize:12, cursor:'pointer', fontWeight:700, fontFamily:'inherit', display:'inline-flex', alignItems:'center', gap:6 }}>
+                            <Icon name={cfg.icon} size={12}/> {cfg.label}
                           </button>
                         ))
                       }
@@ -394,7 +396,7 @@ export default function Veiculos({
     <div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, gap:10 }}>
         <div>
-          <h2 style={{ margin:'0 0 4px', fontSize:22, fontWeight:900 }}>Estoque Ativo</h2>
+          <h2 style={{ margin:'0 0 4px', fontSize:22, fontWeight:800 }}>Estoque Ativo</h2>
           <p style={{ margin:0, color:C.muted, fontSize:13 }}>{ativos.length} veículo(s) cadastrado(s)</p>
         </div>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -477,7 +479,7 @@ export default function Veiculos({
                   }
                   {custoMnt > 0 && <div style={{ fontSize:11, color:C.muted }}>Mnt: {fmtR(custoMnt)}</div>}
                 </div>
-                {!isMobile && <Badge status={v.status} cfg={STATUS_VEICULO_CFG}/>}
+                {!isMobile && <StatusBadge status={v.status} size="sm"/>}
                 <span style={{ color:C.muted, fontSize:18 }}>›</span>
               </div>
             </div>

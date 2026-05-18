@@ -103,7 +103,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       {/* Controles */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12}}>
         <div>
-          <h2 style={{margin:'0 0 4px',fontSize:22,fontWeight:900}}>Dashboard KPI</h2>
+          <h2 style={{margin:'0 0 4px',fontSize:22,fontWeight:800}}>Dashboard KPI</h2>
           <p style={{margin:0,color:C.muted,fontSize:13}}>Indicadores de performance do estoque</p>
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
@@ -144,7 +144,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               ].map(k=>(
                 <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
                   <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.icon} {k.label}</div>
-                  <div style={{...mono,fontSize:28,fontWeight:900,color:k.color}}>{k.value}</div>
+                  <div style={{...mono,fontSize:28,fontWeight:800,color:k.color}}>{k.value}</div>
                 </div>
               ))}
             </div>
@@ -181,7 +181,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                           </div>
                         </div>
                         <div style={{textAlign:'right'}}>
-                          <div style={{...mono,fontSize:20,fontWeight:900,color:cor}}>{pct}%</div>
+                          <div style={{...mono,fontSize:20,fontWeight:800,color:cor}}>{pct}%</div>
                           <div style={{fontSize:10,color:C.muted}}>{c}/{t} etapas</div>
                         </div>
                       </div>
