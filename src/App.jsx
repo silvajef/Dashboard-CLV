@@ -61,20 +61,9 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
   const [abrirVeiculoId, setAbrirVeiculoId] = useState(null)
 
-  if (!fleet.loading) jaCarregou.current = true
-  if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
-
-  // Navegação direta para o processo de um veículo a partir do KPI
-  const irParaProcesso = (veiculoId) => {
-    setAbrirVeiculoId(veiculoId)
-    setAba('veiculos')
-  }
-
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
-  const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
-  const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
-  const SIDEBAR_COLLAPSED = 60
 
+  // useMemo deve ficar ANTES de qualquer return condicional (Rules of Hooks)
   const commands = useMemo(() => {
     const cmds = []
     TABS.forEach(t => cmds.push({
@@ -91,8 +80,20 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
       action: () => { setAba('veiculos'); setAbrirVeiculoId(v.id) },
     }))
     return cmds
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fleet.veiculos, aba])
+  }, [fleet.veiculos, aba, role, setAba])
+
+  if (!fleet.loading) jaCarregou.current = true
+  if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
+
+  // Navegação direta para o processo de um veículo a partir do KPI
+  const irParaProcesso = (veiculoId) => {
+    setAbrirVeiculoId(veiculoId)
+    setAba('veiculos')
+  }
+
+  const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
+  const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
+  const SIDEBAR_COLLAPSED = 60
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily: FONTS.body }}>
