@@ -13,23 +13,23 @@ export const TIPOS_MANUT = [
 export const COMBUSTIVEIS = ['Diesel','Flex','Gasolina','Etanol','GNV','Elétrico','Híbrido']
 
 export const STATUS_VEICULO_CFG = {
-  pendente:   { label: 'Revisão Pendente', color: '#f59e0b', icon: '⏳' },
-  manutencao: { label: 'Em Manutenção',    color: '#4f8ef7', icon: '⚙️' },
-  pronto:     { label: 'Pronto p/ Venda',  color: '#22d3a0', icon: '✓'  },
-  em_venda:   { label: 'Em Venda',         color: '#a78bfa', icon: '🏷' },
-  vendido:    { label: 'Vendido',           color: '#636b85', icon: '✅' },
+  pendente:   { label: 'Revisão Pendente', color: '#f59e0b', icon: 'clock'       },
+  manutencao: { label: 'Em Manutenção',    color: '#4f8ef7', icon: 'wrench'      },
+  pronto:     { label: 'Pronto p/ Venda',  color: '#22d3a0', icon: 'check'       },
+  em_venda:   { label: 'Em Venda',         color: '#a78bfa', icon: 'tag'         },
+  vendido:    { label: 'Vendido',          color: '#636b85', icon: 'checkDouble' },
 }
 
 // ─── Processo de Venda (v3.9) ─────────────────────────────────────────────────
 
 /** Etapas fixas do processo de venda. condicional=true → só aparece se financiado */
 export const ETAPAS_PROCESSO = [
-  { tipo:'financiamento', label:'Financiamento Aprovado',       icon:'🏦', condicional:true  },
-  { tipo:'contrato',      label:'Contrato Assinado',            icon:'📝', condicional:false },
-  { tipo:'revisao',       label:'Revisão Mecânica',             icon:'🔧', condicional:false },
-  { tipo:'vistoria',      label:'Vistoria Cautelar / Transferência', icon:'🔍', condicional:false },
-  { tipo:'documentacao',  label:'Documentação / Transferência', icon:'📋', condicional:false },
-  { tipo:'entrega',       label:'Entrega do Veículo',           icon:'🚗', condicional:false },
+  { tipo:'financiamento', label:'Financiamento Aprovado',            icon:'bank',     condicional:true  },
+  { tipo:'contrato',      label:'Contrato Assinado',                 icon:'contract', condicional:false },
+  { tipo:'revisao',       label:'Revisão Mecânica',                  icon:'wrench',   condicional:false },
+  { tipo:'vistoria',      label:'Vistoria Cautelar / Transferência', icon:'search',   condicional:false },
+  { tipo:'documentacao',  label:'Documentação / Transferência',      icon:'folder',   condicional:false },
+  { tipo:'entrega',       label:'Entrega do Veículo',                icon:'car',      condicional:false },
 ]
 
 export const FORMAS_PAGAMENTO = [
@@ -61,18 +61,33 @@ export const STATUS_SERV_CFG = {
 }
 
 export const C = {
-  bg: '#08090d', surface: '#0e1018', card: '#12151e', cardHi: '#171c28',
-  border: '#1c2030', borderHi: '#2a3050',
-  amber: '#f59e0b', amberDim: '#f59e0b22',
-  green: '#22d3a0', greenDim: '#22d3a015',
-  red: '#f4485e',   redDim: '#f4485e15',
-  blue: '#4f8ef7',  blueDim: '#4f8ef715',
-  purple: '#a78bfa',purpleDim: '#a78bfa15',
-  cyan: '#22d4dd',  orange: '#fb923c',
+  // ── superfícies ────────────────────────────────────────────────────────────
+  bg:      '#08090d',
+  surface: '#0e1018',
+  card:    '#12151e',
+  cardHi:  '#171c28',
+  border:  '#1c2030',
+  borderHi:'#2a3050',
+
+  // ── texto ──────────────────────────────────────────────────────────────────
   text:   '#e8edf8',
-  muted:  '#8b95b0',
-  faint:  '#636b85',
+  muted:  '#9aa3bd',  // bumped para WCAG AA sobre surface (~4.6:1)
+  faint:  '#7a839e',  // bumped para WCAG AA sobre surface (~3.5:1)
   subtle: '#2e3650',
+
+  // ── PRIMÁRIO ────  ações, navegação ativa, foco, links ─────────────────────
+  blue:    '#4f8ef7',
+  blueDim: '#4f8ef715',
+
+  // ── STATUS  ────   feedback semântico — usar SÓ para status, não decoração ─
+  green:    '#22d3a0', greenDim: '#22d3a015',  // sucesso
+  amber:    '#f59e0b', amberDim: '#f59e0b22',  // atenção / pendente
+  red:      '#f4485e', redDim:   '#f4485e15',  // erro / crítico
+
+  // ── CHART palette ──── só em séries de dados; não compete com primário/status
+  purple:   '#a78bfa', purpleDim: '#a78bfa15',
+  cyan:     '#22d4dd',
+  orange:   '#fb923c',
 }
 
 // ─── Formatação ───────────────────────────────────────────────────────────────

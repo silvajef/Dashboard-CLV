@@ -20,7 +20,7 @@ export default function Prestadores({ prestadores, veiculos, savePrestador, remo
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 900 }}>Prestadores de Serviço</h2>
+          <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800 }}>Prestadores de Serviço</h2>
           <p style={{ margin: 0, color: C.muted, fontSize: 13 }}>{prestadores.length} cadastrado(s)</p>
         </div>
         <Btn onClick={() => setModal({ type: 'prestador', data: null })}>+ Novo Prestador</Btn>

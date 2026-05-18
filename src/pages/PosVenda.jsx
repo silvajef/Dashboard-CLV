@@ -38,7 +38,7 @@ export default function PosVenda({
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 900 }}>Pós-Venda</h2>
+        <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800 }}>Pós-Venda</h2>
         <p style={{ margin: 0, color: C.muted, fontSize: 13 }}>
           Gestão de clientes, vendas e garantias dos veículos comercializados
         </p>

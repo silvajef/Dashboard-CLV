@@ -11,6 +11,8 @@ import {
 } from '../lib/constants'
 import { imprimirDocumento } from '../lib/documento'
 import { useBreakpoint } from '../lib/responsive'
+import Icon from './Icon'
+import ProcessTimeline from './ProcessTimeline'
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 const inp = (extra = {}) => ({
@@ -286,7 +288,7 @@ export function ModalIniciarVenda({ veiculo, onSave, onClose, loading }) {
             {etapasPreview.map((e, i) => (
               <div key={e.tipo} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.surface, borderRadius: 8, padding: '10px 14px' }}>
                 <span style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.muted, flexShrink: 0 }}>{i+1}</span>
-                <span style={{ fontSize: 14 }}>{e.icon}</span>
+                <Icon name={e.icon} size={14}/>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{e.label}</span>
               </div>
             ))}
@@ -349,7 +351,7 @@ export function EtapasProcesso({ processo, veiculo, onSave, onConcluir, onCancel
       <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 700 }}>Progresso do Processo</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: corPct, fontFamily: "'JetBrains Mono',monospace" }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: corPct, fontFamily: "'JetBrains Mono',monospace" }}>
             {pct}%
           </div>
         </div>
@@ -361,48 +363,12 @@ export function EtapasProcesso({ processo, veiculo, onSave, onConcluir, onCancel
         </div>
       </div>
 
-      {/* Lista de etapas */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {processo.etapas.map((etapa, i) => (
-          <div key={etapa.tipo} style={{
-            background: etapa.concluido ? `${C.green}10` : C.card,
-            border: `1px solid ${etapa.concluido ? C.green + '44' : C.border}`,
-            borderRadius: 10,
-            padding: '12px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            cursor: 'pointer',
-            transition: 'all .15s',
-          }} onClick={() => !saving && marcarEtapa(i)}>
-            {/* Checkbox */}
-            <div style={{
-              width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-              background: etapa.concluido ? C.green : 'transparent',
-              border: `2px solid ${etapa.concluido ? C.green : C.border}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {etapa.concluido && <span style={{ fontSize: 12, color: '#000', fontWeight: 900 }}>✓</span>}
-            </div>
-
-            {/* Ícone + label */}
-            <span style={{ fontSize: 18, flexShrink: 0 }}>{etapa.icon}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: etapa.concluido ? 600 : 400, color: etapa.concluido ? C.green : C.text,
-                textDecoration: etapa.concluido ? 'none' : 'none' }}>
-                {etapa.label}
-              </div>
-              {etapa.concluido && etapa.concluido_em && (
-                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                  Concluído em {fmtData(etapa.concluido_em)}
-                </div>
-              )}
-            </div>
-
-            {/* Nº */}
-            <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{i+1}/{total}</span>
-          </div>
-        ))}
+      {/* Stepper horizontal de etapas */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24 }}>
+        <ProcessTimeline
+          etapas={processo.etapas}
+          onStepClick={(idx) => !saving && marcarEtapa(idx)}
+        />
       </div>
 
       {/* Dados do comprador e pagamento */}

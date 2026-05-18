@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { C } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
+import Icon from './Icon'
 
 export function Badge({ status, cfg }) {
   const c = cfg[status] || { label: status, color: C.muted }
   return (
     <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:700, background:c.color+'22', color:c.color, border:`1px solid ${c.color}44`, whiteSpace:'nowrap', fontFamily:'inherit' }}>
-      {c.icon && <span>{c.icon}</span>}{c.label}
+      {c.icon && <Icon name={c.icon} size={12}/>}{c.label}
     </span>
   )
 }

@@ -11,7 +11,7 @@ export default function Historico({ veiculos, prestadores }) {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 900 }}>Histórico de Serviços</h2>
+        <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800 }}>Histórico de Serviços</h2>
         <p style={{ margin: 0, color: C.muted, fontSize: 13 }}>{todos.length} serviço(s) registrado(s)</p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
