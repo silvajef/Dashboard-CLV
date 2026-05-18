@@ -1,10 +1,20 @@
 import { useState, useMemo } from 'react'
-import { Card, KPI, GaugeBar, MiniLineChart, SectionHead, Grid, Btn } from '../components/UI'
+import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
+import LineTracker from '../components/charts/LineTracker'
 import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
 const mono = { fontFamily: "'JetBrains Mono',monospace" }
+
+// Shared theme object for LineTracker components — maps dark palette tokens
+const chartTheme = {
+  line:    C.border,
+  faint:   C.faint,
+  muted:   C.muted,
+  text:    C.text,
+  surface: C.card,
+}
 
 export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso }) {
   const [periodo, setPeriodo] = useState('total')
@@ -263,14 +273,16 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                           </div>
                           <span style={{fontSize:11,color:C.muted}}>{totalQtd}v · {fmtR(totalLucro)}</span>
                         </div>
-                        <MiniLineChart
-                          data={slice.map(m=>({label:m.mes,receita:m.receita,lucro:m.lucro}))}
+                        <LineTracker
                           series={[
-                            {key:'receita',color:C.blue,label:'Receita'},
-                            {key:'lucro',color:C.green,label:'Lucro'},
+                            { name: 'Receita', color: C.blue,  data: slice.map(m => m.receita) },
+                            { name: 'Lucro',   color: C.green, data: slice.map(m => m.lucro)   },
                           ]}
-                          formatValue={fmtR}
-                          height={100}
+                          labels={slice.map(m => m.mes)}
+                          height={110}
+                          theme={chartTheme}
+                          formatY={v => fmtR(v)}
+                          formatTooltip={v => fmtR(v)}
                         />
                       </>
                     )
