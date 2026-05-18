@@ -166,7 +166,7 @@ export function ModalPublicarAnuncio({ veiculo, plataformas, tokenValido, integr
   const plataformasAtivas = plataformas.filter(p => p.implementado)
 
   return (
-    <div style={s.overlay} onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div style={s.overlay}>
       <div style={s.modal}>
         <div>
           <h3 style={{ margin: '0 0 4px', color: C.text, fontSize: 16 }}>Publicar Anúncio</h3>

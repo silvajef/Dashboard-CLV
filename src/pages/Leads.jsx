@@ -159,7 +159,7 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
   }
 
   return (
-    <div style={s.overlay} onClick={e => e.target === e.currentTarget && onFechar()}>
+    <div style={s.overlay}>
       <div style={s.modal}>
         <h3 style={{ margin: '0 0 16px', color: C.text, fontSize: 16 }}>
           {lead.id ? 'Editar Lead' : 'Novo Lead'}

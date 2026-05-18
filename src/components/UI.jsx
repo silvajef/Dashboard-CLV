@@ -154,8 +154,7 @@ export function Input({ label, value, onChange, type='text', placeholder, requir
 export function Modal({ title, onClose, children, wide }) {
   const { isMobile } = useBreakpoint()
   return (
-    <div style={{ position:'fixed', inset:0, background:'#000000cc', display:'flex', alignItems:isMobile?'flex-end':'center', justifyContent:'center', zIndex:200, padding:isMobile?0:16 }}
-      onClick={e=>{ if(e.target===e.currentTarget) onClose() }}>
+    <div style={{ position:'fixed', inset:0, background:'#000000cc', display:'flex', alignItems:isMobile?'flex-end':'center', justifyContent:'center', zIndex:200, padding:isMobile?0:16 }}>
       <div style={{
         background:C.card, border:`1px solid ${C.border}`,
         borderRadius: isMobile ? '16px 16px 0 0' : 16,

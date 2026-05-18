@@ -261,6 +261,45 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
     })
     if (e3) throw e3
   }
+
+  // 4. Cria/encontra cliente e registra em vendas_relacao (alimenta Pós-Venda)
+  const dataVenda = new Date().toISOString().split('T')[0]
+  let clienteId = null
+
+  if (processo.comprador_doc?.trim()) {
+    const { data: clienteExistente } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('cpf_cnpj', processo.comprador_doc.trim())
+      .maybeSingle()
+    if (clienteExistente) clienteId = clienteExistente.id
+  }
+
+  if (!clienteId) {
+    const { data: novoCliente, error: e4 } = await supabase
+      .from('clientes')
+      .insert({
+        nome:     processo.comprador_nome || 'Comprador não identificado',
+        cpf_cnpj: processo.comprador_doc?.trim() || null,
+        telefone: processo.comprador_telefone || null,
+        email:    processo.comprador_email    || null,
+        endereco: processo.comprador_endereco || null,
+      })
+      .select('id')
+      .single()
+    if (e4) throw e4
+    clienteId = novoCliente.id
+  }
+
+  const { error: e5 } = await supabase.from('vendas_relacao').insert({
+    veiculo_id:      veiculo.id,
+    cliente_id:      clienteId,
+    data_venda:      dataVenda,
+    valor_venda:     processo.valor_venda || 0,
+    garantia_dias:   90,
+    garantia_inicio: dataVenda,
+  })
+  if (e5) throw e5
 }
 
 /**
