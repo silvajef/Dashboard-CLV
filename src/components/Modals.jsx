@@ -10,7 +10,7 @@ import {
 } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
 
-const TIPOS_VEICULO = ['Van','Pick-up','Caminhão Leve','Caminhão Médio','Caminhão Pesado','Micro-ônibus','Outro']
+const TIPOS_VEICULO = ['Carro','Van','Pick-up','Utilitário','Caminhão Leve','Caminhão Médio','Caminhão Pesado','Micro-ônibus','Moto','Outro']
 
 /* ── DiffFipe ─────────────────────────────────────────────────── */
 function DiffFipe({ valorAnuncio, valorFipe }) {
