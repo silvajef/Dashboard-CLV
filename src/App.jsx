@@ -129,7 +129,9 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}/>}
         {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}/>}
         {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
-        {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}/>}
+        {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
+                                                   saveVendaRelacao={fleet.saveVendaRelacao} saveCliente={fleet.saveCliente} removeCliente={fleet.removeCliente}
+                                                   saveServico={fleet.saveServico} removeServico={fleet.removeServico} prestadores={fleet.prestadores}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
         {abaAtual==='usuarios'      && <Usuarios />}

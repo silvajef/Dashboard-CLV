@@ -3,6 +3,7 @@ import { C, fmtR, custoV, custoFixos, fmtData } from '../lib/constants'
 import { KPI, Grid, Modal, Btn } from '../components/UI'
 import { MoedaInput, UpperInput, DocInput, DateInput, SelectInput } from '../components/Inputs'
 import { useAuth } from '../hooks/useAuth'
+import DetalheVendido from '../components/DetalheVendido'
 import {
   calcularGarantias,
   resumoGarantias,
@@ -23,6 +24,9 @@ export default function PosVenda({
   saveVendaRelacao,
   saveCliente,
   removeCliente,
+  saveServico,
+  removeServico,
+  prestadores = [],
 }) {
   const [sub, setSub] = useState('vendas')
 
@@ -57,7 +61,7 @@ export default function PosVenda({
         ))}
       </div>
 
-      {sub === 'vendas'    && <Vendas    veiculos={veiculos} vendasComGarantia={vendasComGarantia} saveVendaRelacao={saveVendaRelacao} />}
+      {sub === 'vendas'    && <Vendas    veiculos={veiculos} vendasComGarantia={vendasComGarantia} saveVendaRelacao={saveVendaRelacao} saveServico={saveServico} removeServico={removeServico} prestadores={prestadores} />}
       {sub === 'clientes'  && <Clientes  clientes={clientes} vendasRelacao={vendasRelacao} veiculos={veiculos} saveCliente={saveCliente} removeCliente={removeCliente} />}
       {sub === 'garantias' && <Garantias vendasComGarantia={vendasComGarantia} veiculos={veiculos} />}
     </div>
@@ -65,10 +69,9 @@ export default function PosVenda({
 }
 
 // ─── Sub-aba: VENDAS ────────────────────────────────────────────────────────
-function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao }) {
+function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao, saveServico, removeServico, prestadores }) {
   const { podeEditar } = useAuth()
-  const [editando, setEditando] = useState(null)
-  const [saving,   setSaving]   = useState(false)
+  const [detalhe, setDetalhe] = useState(null) // venda selecionada para edição detalhada
 
   const vendasOrdenadas = [...vendasComGarantia].sort(
     (a, b) => new Date(b.data_venda) - new Date(a.data_venda)
@@ -81,10 +84,18 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao }) {
   }, 0)
   const lucro = receita - custos
 
-  async function handleSalvarVenda(dados) {
-    setSaving(true)
-    try { await saveVendaRelacao(dados) } finally { setSaving(false) }
-    setEditando(null)
+  if (detalhe) {
+    return (
+      <DetalheVendido
+        venda={detalhe}
+        veiculos={veiculos}
+        saveVendaRelacao={saveVendaRelacao}
+        saveServico={saveServico}
+        removeServico={removeServico}
+        prestadores={prestadores}
+        onVoltar={() => setDetalhe(null)}
+      />
+    )
   }
 
   return (
@@ -148,9 +159,9 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao }) {
 
                   {podeEditar && (
                     <button
-                      onClick={() => setEditando(vr)}
+                      onClick={() => setDetalhe(vr)}
                       style={btnEditarStyle}
-                      title="Editar venda"
+                      title="Ver detalhes e serviços"
                     >
                       ✏️
                     </button>
@@ -167,16 +178,6 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao }) {
           </div>
         )}
       </div>
-
-      {/* Modal editar venda */}
-      {editando && (
-        <ModalEditarVenda
-          venda={editando}
-          onSalvar={handleSalvarVenda}
-          onClose={() => setEditando(null)}
-          saving={saving}
-        />
-      )}
     </div>
   )
 }
