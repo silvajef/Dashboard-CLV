@@ -282,8 +282,7 @@ function PermCard({ role }) {
 
 function Overlay({ children, onClose }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, fontFamily: "'Syne', sans-serif" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, fontFamily: "'Syne', sans-serif" }}>
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: '28px 28px 24px', width: '100%', maxWidth: 440, maxHeight: '92vh', overflowY: 'auto' }}>
         {children}
       </div>
