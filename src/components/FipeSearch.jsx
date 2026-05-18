@@ -44,7 +44,7 @@ export default function FipeSearch({ tipoVeiculo, onSelectPreco }) {
           <span style={{ fontSize: 16 }}>📊</span>
           <span style={{ fontWeight: 700, fontSize: 13, color: C.amber }}>Consulta Tabela FIPE</span>
           <span style={{ fontSize: 10, color: C.muted, background: C.border, padding: '2px 6px', borderRadius: 10 }}>
-            {fipe.tipo === 'caminhoes' ? 'Caminhões' : 'Carros/Vans'}
+            {fipe.ep === 'caminhoes' ? 'Caminhões' : fipe.ep === 'motos' ? 'Motos' : 'Carros/Utilitários'}
           </span>
         </div>
         {fipe.loading && (

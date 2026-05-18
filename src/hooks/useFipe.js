@@ -21,6 +21,7 @@ async function get(path) {
 export function tipoFipeEndpoint(tipo = '') {
   const t = tipo.toLowerCase()
   if (t.includes('caminhão') || t.includes('caminhao')) return 'caminhoes'
+  if (t === 'moto') return 'motos'
   return 'carros'
 }
 
@@ -107,6 +108,6 @@ export function useFipe(tipoVeiculo) {
     setErro(null)
   }, [])
 
-  return { ...state, sels, loading, erro,
+  return { ...state, ep, sels, loading, erro,
            selecionarMarca, selecionarModelo, selecionarAno, reset }
 }
