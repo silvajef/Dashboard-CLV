@@ -143,11 +143,11 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
             <button key={t.id} onClick={() => setAba(t.id)}
               style={{
                 flex:1, background:'none', border:'none',
-                color: abaAtual===t.id ? C.amber : C.muted,
+                color: abaAtual===t.id ? C.blue : C.muted,
                 padding:'10px 4px 8px', cursor:'pointer',
                 display:'flex', flexDirection:'column', alignItems:'center', gap:3,
                 fontFamily:"'Syne',sans-serif",
-                borderTop: abaAtual===t.id ? `2px solid ${C.amber}` : '2px solid transparent',
+                borderTop: abaAtual===t.id ? `2px solid ${C.blue}` : '2px solid transparent',
               }}>
               <Icon name={t.icon} size={18} strokeWidth={abaAtual===t.id ? 2 : 1.6}/>
               <span style={{ fontSize:9, fontWeight: abaAtual===t.id ? 700 : 400 }}>{t.label}</span>
