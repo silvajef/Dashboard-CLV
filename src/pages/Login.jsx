@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { C, APP_NAME, APP_VERSION } from '../lib/constants'
 import Icon from '../components/Icon'
+import logoImg from '../assets/logo.png'
 
 export default function Login() {
   const [email,       setEmail]       = useState('')
@@ -115,8 +116,8 @@ export default function Login() {
         <div style={s.cardGlowHeader} />
 
         <div style={s.header}>
-          <div style={s.logoBox}>
-            <Icon name="truck" size={32} style={{ color: '#fff' }} />
+          <div style={s.logoWrapper}>
+            <img src={logoImg} alt="CLV Multimarcas" style={s.logoImg} />
           </div>
           <h1 style={s.titulo}>{APP_NAME}</h1>
           <p style={s.sub}>Gestão de Estoque de Veículos de Carga</p>
@@ -437,17 +438,23 @@ const s = {
     textAlign: 'center',
     marginBottom: 36,
   },
-  logoBox: {
-    width: 64,
-    height: 64,
-    background: `linear-gradient(135deg, ${C.blue}, #1d4ed8)`,
-    borderRadius: 18,
+  logoWrapper: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: '0 auto 20px',
-    boxShadow: `0 8px 32px ${C.blue}30, inset 0 2px 8px rgba(255,255,255,0.2)`,
-    border: '1px solid rgba(255, 255, 255, 0.1)',
+    margin: '0 auto 24px',
+    maxWidth: 220,
+    padding: '8px 16px',
+    background: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 12,
+    border: '1px solid rgba(255, 255, 255, 0.04)',
+    boxShadow: 'inset 0 1px 4px rgba(255,255,255,0.02)',
+  },
+  logoImg: {
+    width: '100%',
+    height: 'auto',
+    display: 'block',
+    filter: 'drop-shadow(0 4px 12px rgba(79, 142, 247, 0.15))',
   },
   titulo: {
     margin: 0,
