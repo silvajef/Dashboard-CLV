@@ -529,7 +529,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
             }
           />
           {editMetas && (
-            <div style={{background:C.card,border:`1px solid #f59e0b44`,borderRadius:12,padding:22,marginBottom:24,background:'#f59e0b08'}}>
+            <div style={{background:'#f59e0b08',border:`1px solid #f59e0b44`,borderRadius:12,padding:22,marginBottom:24}}>
               <div style={{fontSize:10,color:C.amber,fontWeight:700,letterSpacing:1,marginBottom:16}}>⚙ CONFIGURAR METAS</div>
               <Grid cols={4} gap={16}>
                 {[
