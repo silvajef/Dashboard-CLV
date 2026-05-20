@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
+import Icon from '../components/Icon'
 import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
@@ -16,7 +17,7 @@ const chartTheme = {
   surface: C.card,
 }
 
-export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso }) {
+export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso, onIrParaEstoque }) {
   const [periodo, setPeriodo] = useState('total')
   const [secao, setSecao]     = useState('overview')
   const [editMetas, setEdit]  = useState(false)
@@ -121,12 +122,12 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
 
       {/* Sub-nav */}
       <div style={{display:'flex',gap:2,borderBottom:`1px solid ${C.border}`,marginBottom:24,flexWrap:'wrap'}}>
-        {navBtn('overview','Visão Geral','⬡')}
-        {navBtn('processos','Processos','🏷')}
-        {navBtn('giro','Giro','↻')}
-        {navBtn('rentabilidade','Rentabilidade','◈')}
-        {navBtn('custos','Custos','⬡')}
-        {navBtn('metas','Metas','◎')}
+        {navBtn('overview',      'Visão Geral',  <Icon name="dashboard" size={14}/>)}
+        {navBtn('processos',     'Processos',    <Icon name="tag"       size={14}/>)}
+        {navBtn('giro',          'Giro',         <Icon name="refresh"   size={14}/>)}
+        {navBtn('rentabilidade', 'Rentabilidade',<Icon name="trending"  size={14}/>)}
+        {navBtn('custos',        'Custos',       <Icon name="coins"     size={14}/>)}
+        {navBtn('metas',         'Metas',        <Icon name="target"    size={14}/>)}
       </div>
 
       {/* ── PROCESSOS EM ANDAMENTO ── */}
@@ -138,12 +139,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           <div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24}}>
               {[
-                {label:'Em Andamento',value:emAndamento.length,                                color:C.purple,icon:'🏷'},
-                {label:'Concluídos',  value:processos.filter(p=>p.status==='concluido').length,color:C.green, icon:'✅'},
-                {label:'Cancelados',  value:processos.filter(p=>p.status==='cancelado').length,color:C.red,   icon:'✕'},
+                {label:'Em Andamento',value:emAndamento.length,                                color:C.purple,icon:'tag'        },
+                {label:'Concluídos',  value:processos.filter(p=>p.status==='concluido').length,color:C.green, icon:'checkDouble'},
+                {label:'Cancelados',  value:processos.filter(p=>p.status==='cancelado').length,color:C.red,   icon:'x'         },
               ].map(k=>(
                 <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
-                  <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.icon} {k.label}</div>
+                  <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8,display:'flex',alignItems:'center',gap:5}}>
+                    <Icon name={k.icon} size={12} style={{color:k.color}}/>{k.label}
+                  </div>
                   <div style={{...mono,fontSize:28,fontWeight:800,color:k.color}}>{k.value}</div>
                 </div>
               ))}
@@ -208,12 +211,16 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
         <div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
             {[
-              {label:'Estoque Ativo',   value:calc.ativos.length,            icon:'🚛',color:C.blue},
-              {label:'Prontos p/ Venda',value:calc.ativos.filter(v=>v.status==='pronto').length,icon:'✓',color:C.green},
-              {label:'Em Manutenção',   value:calc.ativos.filter(v=>v.status==='manutencao').length,icon:'⚙',color:C.amber},
-              {label:'Vendidos',        value:calc.vendidos.length,          icon:'🏷',color:'#a78bfa'},
-              {label:'Taxa de Giro',    value:fmtPct(calc.taxaGiro),        icon:'↻',color:C.cyan},
-            ].map(k=><KPI key={k.label} {...k}/>)}
+              {label:'Estoque Ativo',   value:calc.ativos.length,                                    icon:'truck',   color:C.blue,  filtro:'todos'      },
+              {label:'Prontos p/ Venda',value:calc.ativos.filter(v=>v.status==='pronto').length,     icon:'check',   color:C.green, filtro:'pronto'     },
+              {label:'Em Manutenção',   value:calc.ativos.filter(v=>v.status==='manutencao').length, icon:'wrench',  color:C.amber, filtro:'manutencao' },
+              {label:'Em Venda',        value:calc.ativos.filter(v=>v.status==='em_venda').length,   icon:'tag',     color:C.purple,filtro:'em_venda'   },
+              {label:'Taxa de Giro',    value:fmtPct(calc.taxaGiro),                                 icon:'refresh', color:C.cyan                       },
+            ].map(k=>(
+              <KPI key={k.label} label={k.label} value={k.value} color={k.color}
+                icon={<Icon name={k.icon} size={20} style={{color:k.color}}/>}
+                onClick={k.filtro && onIrParaEstoque ? () => onIrParaEstoque(k.filtro) : undefined}/>
+            ))}
           </div>
           <Grid cols={4} gap={12} style={{marginBottom:24}}>
             {[

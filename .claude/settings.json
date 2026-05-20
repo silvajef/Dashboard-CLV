@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"$input = [Console]::In.ReadToEnd() | ConvertFrom-Json; $path = $input.tool_input.file_path; if ($path -match '\\.env$') { Write-Error 'BLOQUEADO: Edições diretas no .env são proibidas. Edite manualmente se necessário.'; exit 2 }\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"$input = [Console]::In.ReadToEnd() | ConvertFrom-Json; $path = $input.tool_input.file_path; if ($path -match 'SUPABASE_MIGRATION.*\\.sql$') { Write-Error 'BLOQUEADO: Não edite arquivos de migração já aplicados. Crie uma nova migração com /nova-migracao.'; exit 2 }\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}

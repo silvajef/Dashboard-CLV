@@ -24,8 +24,9 @@ const SIZES = {
 }
 
 export default function StatusBadge({ status, size = 'md', showDot = true, style }) {
-  const cfg = CFG[status] || CFG.pendente
-  const s   = SIZES[size] || SIZES.md
+  const cfg  = CFG[status] || CFG.pendente
+  const s    = SIZES[size] || SIZES.md
+  const glow = status !== 'vendido' ? `0 0 10px ${cfg.color}40` : undefined
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: s.gap,
@@ -33,15 +34,17 @@ export default function StatusBadge({ status, size = 'md', showDot = true, style
       fontSize: s.fs, fontWeight: 600,
       color: cfg.color,
       background: cfg.color + '18',
-      border: `1px solid ${cfg.color}33`,
+      border: `1px solid ${cfg.color}44`,
       whiteSpace: 'nowrap', lineHeight: 1,
       fontFamily: "'Syne', sans-serif",
+      boxShadow: glow,
       ...style,
     }}>
       {showDot && (
         <span style={{
-          width: s.dot, height: s.dot,
-          borderRadius: '50%', background: cfg.color, flexShrink: 0,
+          width: s.dot, height: s.dot, borderRadius: '50%',
+          background: cfg.color, flexShrink: 0,
+          boxShadow: glow,
         }}/>
       )}
       <Icon name={cfg.icon} size={s.ih} strokeWidth={2}/>

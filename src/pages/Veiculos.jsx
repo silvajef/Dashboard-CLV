@@ -28,6 +28,7 @@ export default function Veiculos({
   saveServico, removeServico,
   saveProcesso, concluirProcesso, cancelarProcesso,
   abrirVeiculoId, onAbrirVeiculoHandled,
+  filtroInicial, onFiltroInicialHandled,
 }) {
   const { isMobile } = useBreakpoint()
   const [vSel,   setVSel]   = useState(null)
@@ -47,6 +48,14 @@ export default function Veiculos({
       onAbrirVeiculoHandled?.()
     }
   }, [abrirVeiculoId, veiculos])
+
+  // Drill-down vindo do KPI: aplica filtro de status pré-selecionado
+  useEffect(() => {
+    if (!filtroInicial) return
+    setFiltro(p => ({ ...p, status: filtroInicial }))
+    setVSel(null)
+    onFiltroInicialHandled?.()
+  }, [filtroInicial])
 
   // Veículos ativos (tudo menos vendido)
   const ativos    = veiculos.filter(v => v.status !== 'vendido')

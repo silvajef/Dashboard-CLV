@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from 'react'
-import { useFleetData } from './hooks/useFleetData'
+import { useState, useRef } from 'react'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
 import { LoadingScreen, ErrorBanner } from './components/UI'
 import Sidebar from './components/Sidebar'
 import Icon from './components/Icon'
-import { APP_NAME, APP_VERSION, C } from './lib/constants'
+import { APP_NAME, C } from './lib/constants'
+import { ToastProvider } from './context/ToastContext'
+import { FleetProvider, useFleet } from './context/FleetContext'
 import Veiculos    from './pages/Veiculos'
 import PosVenda    from './pages/PosVenda'
 import Prestadores from './pages/Prestadores'
@@ -39,26 +40,31 @@ const ROLE_BADGE = {
 export default function App() {
   const { session, loading: authLoading, perfil, role, signOut } = useAuth()
   const [aba, setAba] = useState('dashboard')
-  const { isMobile, isTablet } = useBreakpoint()
+  const { isMobile } = useBreakpoint()
 
   if (authLoading) return <LoadingScreen />
   if (!session)    return <Login />
 
   return (
-    <AppAutenticado
-      session={session} perfil={perfil} role={role} signOut={signOut}
-      aba={aba} setAba={setAba}
-      isMobile={isMobile} isTablet={isTablet}
-    />
+    <FleetProvider>
+      <ToastProvider>
+        <AppAutenticado
+          session={session} perfil={perfil} role={role} signOut={signOut}
+          aba={aba} setAba={setAba}
+          isMobile={isMobile}
+        />
+      </ToastProvider>
+    </FleetProvider>
   )
 }
 
-function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile, isTablet }) {
-  const fleet = useFleetData()
+function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile }) {
+  const fleet = useFleet()
   const jaCarregou = useRef(false)
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
-  const [abrirVeiculoId, setAbrirVeiculoId] = useState(null)
+  const [abrirVeiculoId,       setAbrirVeiculoId]       = useState(null)
+  const [filtroInicialVeiculos, setFiltroInicialVeiculos] = useState(null)
 
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
@@ -69,6 +75,12 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
     setAba('veiculos')
   }
 
+  // Drill-down: navega para Estoque com filtro de status pré-selecionado
+  const irParaEstoqueComFiltro = (status) => {
+    setFiltroInicialVeiculos(status)
+    setAba('veiculos')
+  }
+
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
@@ -76,18 +88,21 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
   const SIDEBAR_COLLAPSED = 60
 
   return (
-    <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Syne','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Outfit','Segoe UI',sans-serif" }}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         html{-webkit-text-size-adjust:100%}
         ::-webkit-scrollbar{width:4px;height:4px}
         ::-webkit-scrollbar-track{background:${C.surface}}
         ::-webkit-scrollbar-thumb{background:${C.border};border-radius:2px}
-        body{background:${C.bg};overscroll-behavior:none}
+        body{background:${C.bg};overscroll-behavior:none;font-family:'Outfit','Segoe UI',sans-serif}
+        h1,h2,h3{font-family:'Syne','Segoe UI',sans-serif}
         input[type=number]{-moz-appearance:textfield}
         input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
         button{-webkit-tap-highlight-color:transparent}
         select,input,textarea{-webkit-appearance:none}
+        @keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes toastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
       `}</style>
 
       {/* ── SIDEBAR DESKTOP / TABLET ── */}
@@ -123,12 +138,14 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
       <main style={{ marginLeft: isMobile ? 0 : SIDEBAR_COLLAPSED, padding: isMobile ? '16px 12px 80px' : '28px 24px', minHeight:'100vh' }}>
         {fleet.error && <ErrorBanner message={fleet.error} onRetry={fleet.reload}/>}
 
-        {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso}/>}
+        <div key={abaAtual} style={{ animation:'fadeInUp 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
+        {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso} onIrParaEstoque={irParaEstoqueComFiltro}/>}
         {abaAtual==='veiculos'    && <Veiculos     veiculos={fleet.veiculos} prestadores={fleet.prestadores} processos={fleet.processos}
                                                    saveVeiculo={fleet.saveVeiculo} removeVeiculo={fleet.removeVeiculo}
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
-                                                   abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}/>}
+                                                   abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}
+                                                   filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}/>}
         {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}/>}
         {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
@@ -138,6 +155,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile,
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
         {abaAtual==='configuracoes' && <Configuracoes />}
+        </div>
       </main>
 
       {/* ── BOTTOM NAV MOBILE ── */}

@@ -100,17 +100,56 @@ export function MiniLineChart({ data, series, formatValue, height = 80 }) {
 }
 
 export function Card({ children, style }) {
-  return <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:22, ...style }}>{children}</div>
+  return (
+    <div
+      style={{
+        background: `${C.card}A6`,
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid #ffffff0D',
+        borderRadius: 14,
+        padding: 22,
+        boxShadow: '0 8px 32px #00000060',
+        transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1), border-color 0.25s, box-shadow 0.25s',
+        ...style,
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform    = 'translateY(-3px)'
+        e.currentTarget.style.borderColor  = `${C.blue}44`
+        e.currentTarget.style.boxShadow    = `0 16px 40px #00000070, 0 0 0 1px ${C.blue}22`
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform    = 'translateY(0)'
+        e.currentTarget.style.borderColor  = '#ffffff0D'
+        e.currentTarget.style.boxShadow    = '0 8px 32px #00000060'
+      }}
+    >
+      {children}
+    </div>
+  )
 }
 
-export function KPI({ label, value, icon, color, sub }) {
+export function KPI({ label, value, icon, color, sub, onClick, style }) {
+  const clickable = !!onClick
   return (
-    <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'18px 16px', position:'relative', overflow:'hidden' }}>
+    <div
+      onClick={onClick}
+      style={{
+        background:C.card, border:`1px solid ${C.border}`, borderRadius:12,
+        padding:'18px 16px', position:'relative', overflow:'hidden',
+        cursor: clickable ? 'pointer' : 'default',
+        transition: clickable ? 'border-color 0.15s, transform 0.15s' : undefined,
+        ...style,
+      }}
+      onMouseEnter={clickable ? e => { e.currentTarget.style.borderColor=color; e.currentTarget.style.transform='translateY(-2px)' } : undefined}
+      onMouseLeave={clickable ? e => { e.currentTarget.style.borderColor=C.border; e.currentTarget.style.transform='translateY(0)' } : undefined}
+    >
       <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:color }} />
       <div style={{ fontSize:20, marginBottom:2 }}>{icon}</div>
       <div style={{ fontSize:22, fontWeight:800, color, fontFamily:"'JetBrains Mono',monospace", letterSpacing:-1 }}>{value}</div>
       <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>{label}</div>
       {sub && <div style={{ fontSize:12, color:C.muted, marginTop:8, borderTop:`1px solid ${C.border}`, paddingTop:6 }}>{sub}</div>}
+      {clickable && <div style={{ position:'absolute', bottom:10, right:12, fontSize:10, color, fontWeight:700, opacity:0.6 }}>→ Ver</div>}
     </div>
   )
 }

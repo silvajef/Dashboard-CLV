@@ -114,7 +114,8 @@ export default function LineTracker({
         <defs>
           {series.map((s, i) => (
             <linearGradient key={i} id={`grad-lt-${i}-${s.color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"  stopColor={s.color} stopOpacity="0.16"/>
+              <stop offset="0%"   stopColor={s.color} stopOpacity="0.30"/>
+              <stop offset="75%"  stopColor={s.color} stopOpacity="0.06"/>
               <stop offset="100%" stopColor={s.color} stopOpacity="0"/>
             </linearGradient>
           ))}
@@ -126,6 +127,9 @@ export default function LineTracker({
             <path d={areaPath(s.data)} fill={`url(#grad-lt-${i}-${s.color.replace('#','')})`}/>
             <path d={linePath(s.data)} fill="none" stroke={s.color} strokeWidth="2"
               strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Glow ring + dot no último ponto */}
+            <circle cx={xAt(n-1)} cy={yAt(s.data[n-1])} r="9"  fill={s.color} opacity="0.12"/>
+            <circle cx={xAt(n-1)} cy={yAt(s.data[n-1])} r="4"  fill={s.color} stroke={t.surface || '#12151e'} strokeWidth="2"/>
           </g>
         ))}
 
