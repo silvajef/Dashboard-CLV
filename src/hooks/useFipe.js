@@ -69,7 +69,7 @@ export function useFipe(tipoVeiculo) {
     setSels({ marcaCod:'', marcaNome:'', modeloCod:'', modeloNome:'', anoCod:'', anoNome:'' })
     setErro(null)
     setLoading('marcas')
-    get(`/${ep}/marcas`)
+    get(`/${ep}/brands`)
       .then(data => setState(p => ({ ...p, marcas: data.map(normalizeItem) })))
       .catch(e => setErro(e.message))
       .finally(() => setLoading(''))
@@ -82,7 +82,7 @@ export function useFipe(tipoVeiculo) {
     if (!cod) return
     setLoading('modelos')
     try {
-      const data = await get(`/${ep}/marcas/${cod}/modelos`)
+      const data = await get(`/${ep}/brands/${cod}/models`)
       setState(p => ({ ...p, modelos: data.map(normalizeItem) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
@@ -95,7 +95,7 @@ export function useFipe(tipoVeiculo) {
     if (!cod) return
     setLoading('anos')
     try {
-      const anos = await get(`/${ep}/marcas/${marcaCod}/modelos/${cod}/anos`)
+      const anos = await get(`/${ep}/brands/${marcaCod}/models/${cod}/years`)
       setState(p => ({ ...p, anos: anos.map(normalizeItem) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
@@ -108,7 +108,7 @@ export function useFipe(tipoVeiculo) {
     if (!cod) return
     setLoading('preco')
     try {
-      const raw = await get(`/${ep}/marcas/${marcaCod}/modelos/${modeloCod}/anos/${cod}`)
+      const raw = await get(`/${ep}/brands/${marcaCod}/models/${modeloCod}/years/${cod}`)
       setState(p => ({ ...p, preco: normalizePreco(raw) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
