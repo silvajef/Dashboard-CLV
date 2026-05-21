@@ -65,6 +65,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
   const [abrirVeiculoId,       setAbrirVeiculoId]       = useState(null)
   const [filtroInicialVeiculos, setFiltroInicialVeiculos] = useState(null)
+  const [focusBuscaVeiculos,   setFocusBuscaVeiculos]   = useState(false)
 
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
@@ -79,6 +80,12 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   const irParaEstoqueComFiltro = (status) => {
     setFiltroInicialVeiculos(status)
     setAba('veiculos')
+  }
+
+  // Busca na sidebar: navega para Estoque e foca o input de busca
+  const irParaBusca = () => {
+    setAba('veiculos')
+    setFocusBuscaVeiculos(true)
   }
 
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
@@ -111,6 +118,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
           tabs={TABS} aba={abaAtual} setAba={setAba}
           perfil={perfil} session={session} badge={badge}
           signOut={signOut} fleetError={!!fleet.error} role={role}
+          onSearch={irParaBusca}
         />
       )}
 
@@ -145,7 +153,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}
-                                                   filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}/>}
+                                                   filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}
+                                                   focusBusca={focusBuscaVeiculos} onFocusBuscaHandled={() => setFocusBuscaVeiculos(false)}/>}
         {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}/>}
         {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}

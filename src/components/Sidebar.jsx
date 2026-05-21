@@ -127,7 +127,7 @@ function SectionLabel({ label, expanded, paddingTop = 0 }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────
-export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, signOut, fleetError, role }) {
+export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, signOut, fleetError, role, onSearch }) {
   const [expanded,    setExpanded]    = useState(false)
   const [searchHover, setSearchHover] = useState(false)
 
@@ -202,7 +202,7 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
 
       {/* ── Search ── */}
       <div
-        onClick={() => setAba('veiculos')}
+        onClick={onSearch}
         onMouseEnter={() => setSearchHover(true)}
         onMouseLeave={() => setSearchHover(false)}
         title={!expanded ? 'Buscar veículo' : undefined}

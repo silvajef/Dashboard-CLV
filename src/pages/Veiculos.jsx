@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
@@ -29,6 +29,7 @@ export default function Veiculos({
   saveProcesso, concluirProcesso, cancelarProcesso,
   abrirVeiculoId, onAbrirVeiculoHandled,
   filtroInicial, onFiltroInicialHandled,
+  focusBusca, onFocusBuscaHandled,
 }) {
   const { isMobile } = useBreakpoint()
   const [vSel,   setVSel]   = useState(null)
@@ -37,6 +38,7 @@ export default function Veiculos({
   const [saving, setSaving] = useState(false)
   const [erro,   setErro]   = useState(null)
   const [filtro, setFiltro] = useState({ status:'todos', busca:'' })
+  const buscaRef = useRef(null)
 
   // Navegação direta vinda do KPI: abre o veículo e vai direto à aba de processo
   useEffect(() => {
@@ -56,6 +58,15 @@ export default function Veiculos({
     setVSel(null)
     onFiltroInicialHandled?.()
   }, [filtroInicial])
+
+  // Busca da Sidebar: volta para a lista e foca o input
+  useEffect(() => {
+    if (!focusBusca) return
+    setVSel(null)
+    const focus = () => { buscaRef.current?.focus(); onFocusBuscaHandled?.() }
+    if (buscaRef.current) focus()
+    else setTimeout(focus, 0)
+  }, [focusBusca])
 
   // Veículos ativos (tudo menos vendido)
   const ativos    = veiculos.filter(v => v.status !== 'vendido')
@@ -417,7 +428,7 @@ export default function Veiculos({
       {erro && <ErrorBanner message={erro}/>}
 
       <div style={{ display:'flex', gap:10, marginBottom:20, flexWrap:'wrap' }}>
-        <input value={filtro.busca} onChange={e=>setFiltro(p=>({...p,busca:e.target.value}))} placeholder="🔍 Buscar placa, marca ou modelo..." style={{ ...inp, width:isMobile?'100%':280 }}/>
+        <input ref={buscaRef} value={filtro.busca} onChange={e=>setFiltro(p=>({...p,busca:e.target.value}))} placeholder="🔍 Buscar placa, marca ou modelo..." style={{ ...inp, width:isMobile?'100%':280 }}/>
         <select value={filtro.status} onChange={e=>setFiltro(p=>({...p,status:e.target.value}))} style={inp}>
           <option value="todos">Todos os status</option>
           {Object.entries(STATUS_VEICULO_CFG).filter(([k])=>k!=='vendido').map(([k,cfg])=>(
