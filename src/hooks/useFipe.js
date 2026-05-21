@@ -109,7 +109,15 @@ export function useFipe(tipoVeiculo) {
     setLoading('preco')
     try {
       const raw = await get(`/${ep}/brands/${marcaCod}/models/${modeloCod}/years/${cod}`)
-      setState(p => ({ ...p, preco: normalizePreco(raw) }))
+      const fipeCod = raw.codeFipe || ''
+      let priceHistory = []
+      if (fipeCod) {
+        try {
+          const hist = await get(`/${ep}/${fipeCod}/years/${cod}/history`)
+          priceHistory = hist.priceHistory || []
+        } catch { /* histórico não crítico */ }
+      }
+      setState(p => ({ ...p, preco: normalizePreco({ ...raw, priceHistory }) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
   }, [ep])
