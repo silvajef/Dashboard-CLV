@@ -5,5 +5,14 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: { '@': '/src' }
+  },
+  server: {
+    proxy: {
+      '/fipe': {
+        target: 'https://parallelum.com.br',
+        changeOrigin: true,
+        secure: true,
+      }
+    }
   }
 })

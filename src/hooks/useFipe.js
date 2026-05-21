@@ -4,9 +4,7 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 
-const BASE = import.meta.env.DEV
-  ? '/fipe/api/v1'
-  : 'https://parallelum.com.br/fipe/api/v1'
+const BASE = '/fipe/api/v1'
 
 const _cache = new Map()
 async function get(path) {
