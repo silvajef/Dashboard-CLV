@@ -1,6 +1,5 @@
 {
   "rewrites": [
-    { "source": "/fipe/:path*", "destination": "https://parallelum.com.br/fipe/:path*" },
     { "source": "/((?!api/).*)", "destination": "/" }
   ]
 }

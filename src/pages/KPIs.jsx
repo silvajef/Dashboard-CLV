@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
 import Icon from '../components/Icon'
-import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, diasNoEstoque } from '../lib/constants'
+import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, diasNoEstoque } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
@@ -156,6 +156,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
         {navBtn('rentabilidade', 'Rentabilidade',<Icon name="trending"  size={14}/>)}
         {navBtn('custos',        'Custos',       <Icon name="coins"     size={14}/>)}
         {navBtn('metas',         'Metas',        <Icon name="target"    size={14}/>)}
+        {navBtn('depreciacao',   'Depreciação',  <Icon name="trending"  size={14}/>)}
       </div>
 
       {/* ── PROCESSOS EM ANDAMENTO ── */}
@@ -649,6 +650,95 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           </Card>
         </div>
       )}
+
+      {/* ── DEPRECIAÇÃO FIPE ── */}
+      {secao==='depreciacao' && (()=>{
+        const comFipe = calc.ativos.filter(v => v.valor_fipe > 0)
+
+        const alertas = comFipe.map(v => {
+          const ct = custoTotal(v)
+          const fipe = v.valor_fipe
+          const isRed   = fipe < ct
+          const isAmber = !isRed && fipe < (v.valor_compra||0) * 0.95
+          const gapFipeCusto  = fipe - ct
+          const gapFipeCompra = v.valor_compra > 0 ? ((fipe - v.valor_compra) / v.valor_compra) * 100 : 0
+          return { ...v, ct, fipe, isRed, isAmber, gapFipeCusto, gapFipeCompra }
+        }).filter(v => v.isRed || v.isAmber)
+          .sort((a, b) => (b.isRed - a.isRed) || (a.gapFipeCusto - b.gapFipeCusto))
+
+        const totalRed   = alertas.filter(v => v.isRed).length
+        const totalAmber = alertas.filter(v => v.isAmber).length
+
+        return (
+          <div>
+            <SectionHead title="Alertas de Depreciação FIPE" subtitle="Veículos cuja tabela FIPE indica risco de perda"/>
+
+            {/* Summary badges */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24}}>
+              {[
+                { label:'Com Tabela FIPE', value:comFipe.length, color:C.blue,  desc:'ativos consultados' },
+                { label:'Alerta Crítico',  value:totalRed,       color:C.red,   desc:'FIPE < custo total' },
+                { label:'Alerta Atenção',  value:totalAmber,     color:C.amber, desc:'FIPE caiu >5% vs compra' },
+              ].map(k=>(
+                <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
+                  <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.label}</div>
+                  <div style={{...mono,fontSize:28,fontWeight:800,color:k.color}}>{k.value}</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:4}}>{k.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {!alertas.length ? (
+              <div style={{textAlign:'center',color:C.green,padding:60,background:C.card,borderRadius:12,border:`1px solid ${C.green}33`}}>
+                <div style={{fontSize:28,marginBottom:8}}>✓</div>
+                <div style={{fontWeight:700}}>Nenhum alerta de depreciação</div>
+                <div style={{fontSize:12,color:C.muted,marginTop:4}}>Todos os veículos com FIPE cadastrada estão com valor acima do ponto crítico.</div>
+              </div>
+            ) : (
+              <div>
+                {alertas.map(v => {
+                  const cor      = v.isRed ? C.red : C.amber
+                  const corDim   = v.isRed ? C.redDim : `${C.amber}15`
+                  const icon     = v.isRed ? '🔴' : '🟡'
+                  const legenda  = v.isRed
+                    ? `FIPE ${fmtR(Math.abs(v.gapFipeCusto))} abaixo do custo total`
+                    : `FIPE ${Math.abs(v.gapFipeCompra).toFixed(1)}% abaixo do valor de compra`
+
+                  return (
+                    <div key={v.id} style={{background:corDim,border:`1px solid ${cor}33`,borderRadius:12,padding:'14px 18px',marginBottom:10,borderLeft:`4px solid ${cor}`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>
+                            {icon} {v.marca_nome||''} {v.modelo_nome||v.modelo||''}&nbsp;
+                            <span style={{fontSize:11,color:C.muted,fontFamily:'monospace'}}>{v.placa}</span>
+                          </div>
+                          <div style={{fontSize:12,color:C.muted}}>{legenda}</div>
+                        </div>
+                        <div style={{textAlign:'right'}}>
+                          <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:4}}>TABELA FIPE</div>
+                          <div style={{...mono,fontSize:18,fontWeight:800,color:cor}}>{fmtR(v.fipe)}</div>
+                        </div>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginTop:12}}>
+                        {[
+                          ['Valor de Compra', fmtR(v.valor_compra||0), C.muted],
+                          ['Custo Total',     fmtR(v.ct),              C.orange],
+                          ['Gap FIPE/Custo',  fmtR(v.gapFipeCusto),   v.gapFipeCusto<0?C.red:C.green],
+                        ].map(([l,val,c])=>(
+                          <div key={l} style={{background:C.card,borderRadius:8,padding:'8px 12px',textAlign:'center'}}>
+                            <div style={{fontSize:9,color:C.muted,fontWeight:700,marginBottom:3}}>{l}</div>
+                            <div style={{...mono,fontSize:13,fontWeight:700,color:c}}>{val}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

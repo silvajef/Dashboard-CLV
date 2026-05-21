@@ -7,6 +7,7 @@ import { useBreakpoint } from '../lib/responsive'
 import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
 import Icon from '../components/Icon'
 import StatusBadge from '../components/StatusBadge'
+import FipeHistoricoChart from '../components/FipeHistoricoChart'
 
 function nomeVeiculo(v) {
   const marca  = v.marca_nome  || ''
@@ -295,6 +296,11 @@ export default function Veiculos({
                     </div>
                   )
                 })()}
+
+                <FipeHistoricoChart
+                  historico={vAtual.fipe_historico}
+                  valorEntrada={vAtual.valor_compra}
+                />
 
                 {/* Alterar status — oculto quando em_venda */}
                 {vAtual.status !== 'em_venda' && vAtual.status !== 'vendido' && (

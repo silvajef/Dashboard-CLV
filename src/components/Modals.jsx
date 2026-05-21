@@ -81,6 +81,7 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
     fornecedor_doc:      data?.fornecedor_doc     || '',
     fornecedor_telefone: data?.fornecedor_telefone|| '',
     fornecedor_email:    data?.fornecedor_email   || '',
+    fipe_historico:      data?.fipe_historico     || [],
   })
 
   const [fotos, setFotos] = useState(data?.fotos || [])
@@ -127,7 +128,12 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
     const codigoFipe = pr.CodigoFipe || pr.codigoFipe || ''
     if (codigoFipe && codigoFipe !== f.codigo_fipe) {
       const valorFipe = parseFipeValor(pr.Valor || pr.valor || '')
-      setF(p => ({ ...p, codigo_fipe:codigoFipe, valor_fipe:valorFipe, combustivel:(pr.Combustivel||pr.combustivel||p.combustivel).toUpperCase() }))
+      setF(p => ({ ...p,
+        codigo_fipe:    codigoFipe,
+        valor_fipe:     valorFipe,
+        combustivel:    (pr.Combustivel||pr.combustivel||p.combustivel).toUpperCase(),
+        fipe_historico: pr.historico?.length ? pr.historico : p.fipe_historico,
+      }))
     }
   }
 

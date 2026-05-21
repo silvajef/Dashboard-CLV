@@ -1,10 +1,11 @@
 /**
- * useFipe v2 — reescrito com log de debug
- * Retorna objetos completos {codigo, nome} nas seleções
+ * useFipe v3 — FIPE API v2 (fipe.parallelum.com.br/api/v2)
+ * Auth header injected server-side via /api/fipe proxy.
+ * Returns normalized PascalCase price + priceHistory as `historico`.
  */
 import { useState, useEffect, useCallback } from 'react'
 
-const BASE = '/fipe/api/v1'
+const BASE = '/api/fipe'
 
 const _cache = new Map()
 async function get(path) {
@@ -18,11 +19,31 @@ async function get(path) {
   return data
 }
 
+// v2 uses English type slugs
 export function tipoFipeEndpoint(tipo = '') {
   const t = tipo.toLowerCase()
-  if (t.includes('caminhão') || t.includes('caminhao')) return 'caminhoes'
-  if (t === 'moto') return 'motos'
-  return 'carros'
+  if (t.includes('caminhão') || t.includes('caminhao')) return 'trucks'
+  if (t === 'moto') return 'motorcycles'
+  return 'cars'
+}
+
+// v2 list items: {code, name} → {codigo, nome}
+function normalizeItem(item) {
+  return { codigo: item.code ?? item.codigo, nome: item.name ?? item.nome }
+}
+
+// v2 price response → PascalCase (backward compat) + historico array
+function normalizePreco(raw) {
+  return {
+    CodigoFipe:    raw.codeFipe       || raw.CodigoFipe   || '',
+    Valor:         raw.price          || raw.Valor         || '',
+    MesReferencia: raw.referenceMonth || raw.MesReferencia || '',
+    Combustivel:   raw.fuel           || raw.Combustivel   || '',
+    Marca:         raw.brand          || raw.Marca         || '',
+    Modelo:        raw.model          || raw.Modelo        || '',
+    AnoModelo:     String(raw.modelYear || raw.AnoModelo || ''),
+    historico:     raw.priceHistory   || [],
+  }
 }
 
 export function parseFipeValor(str = '') {
@@ -30,7 +51,7 @@ export function parseFipeValor(str = '') {
   return parseFloat(str.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0
 }
 
-const INIT = { marcas:[], modelos:[], anos:[], preco:null }
+const INIT = { marcas: [], modelos: [], anos: [], preco: null }
 
 export function useFipe(tipoVeiculo) {
   const [state,   setState]   = useState(INIT)
@@ -40,64 +61,53 @@ export function useFipe(tipoVeiculo) {
 
   const ep = tipoFipeEndpoint(tipoVeiculo)
 
-  // Carrega marcas quando tipo muda
   useEffect(() => {
     if (!tipoVeiculo) return
     setState(INIT)
     setSels({ marcaCod:'', marcaNome:'', modeloCod:'', modeloNome:'', anoCod:'', anoNome:'' })
     setErro(null)
     setLoading('marcas')
-    get(`/${ep}/marcas`)
-      .then(marcas => setState(p => ({ ...p, marcas })))
+    get(`/${ep}/brands`)
+      .then(data => setState(p => ({ ...p, marcas: data.map(normalizeItem) })))
       .catch(e => setErro(e.message))
       .finally(() => setLoading(''))
   }, [ep])
 
-  // Seleciona marca → carrega modelos
   const selecionarMarca = useCallback(async (cod, nome) => {
-    console.log('[FIPE] selecionarMarca:', { cod, nome })
     setSels({ marcaCod:cod, marcaNome:nome, modeloCod:'', modeloNome:'', anoCod:'', anoNome:'' })
     setState(p => ({ ...p, modelos:[], anos:[], preco:null }))
     setErro(null)
     if (!cod) return
     setLoading('modelos')
     try {
-      const raw = await get(`/${ep}/marcas/${cod}/modelos`)
-      const modelos = raw.modelos ?? raw
-      console.log('[FIPE] modelos carregados:', modelos.length)
-      setState(p => ({ ...p, modelos }))
+      const data = await get(`/${ep}/brands/${cod}/models`)
+      setState(p => ({ ...p, modelos: data.map(normalizeItem) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
   }, [ep])
 
-  // Seleciona modelo → carrega anos
   const selecionarModelo = useCallback(async (cod, nome, marcaCod) => {
-    console.log('[FIPE] selecionarModelo:', { cod, nome, marcaCod })
     setSels(p => ({ ...p, modeloCod:cod, modeloNome:nome, anoCod:'', anoNome:'' }))
     setState(p => ({ ...p, anos:[], preco:null }))
     setErro(null)
     if (!cod) return
     setLoading('anos')
     try {
-      const anos = await get(`/${ep}/marcas/${marcaCod}/modelos/${cod}/anos`)
-      console.log('[FIPE] anos carregados:', anos.length)
-      setState(p => ({ ...p, anos }))
+      const anos = await get(`/${ep}/brands/${marcaCod}/models/${cod}/years`)
+      setState(p => ({ ...p, anos: anos.map(normalizeItem) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
   }, [ep])
 
-  // Seleciona ano → busca preço
   const selecionarAno = useCallback(async (cod, nome, marcaCod, modeloCod) => {
-    console.log('[FIPE] selecionarAno:', { cod, nome, marcaCod, modeloCod })
     setSels(p => ({ ...p, anoCod:cod, anoNome:nome }))
     setState(p => ({ ...p, preco:null }))
     setErro(null)
     if (!cod) return
     setLoading('preco')
     try {
-      const preco = await get(`/${ep}/marcas/${marcaCod}/modelos/${modeloCod}/anos/${cod}`)
-      console.log('[FIPE] preco:', preco)
-      setState(p => ({ ...p, preco }))
+      const raw = await get(`/${ep}/brands/${marcaCod}/models/${modeloCod}/years/${cod}`)
+      setState(p => ({ ...p, preco: normalizePreco(raw) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
   }, [ep])
