@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
 import { LoadingScreen, ErrorBanner } from './components/UI'
 import Sidebar from './components/Sidebar'
+import GlobalSearch from './components/GlobalSearch'
 import Icon from './components/Icon'
 import { APP_NAME, C } from './lib/constants'
 import { ToastProvider } from './context/ToastContext'
@@ -63,9 +64,9 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   const jaCarregou = useRef(false)
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
-  const [abrirVeiculoId,       setAbrirVeiculoId]       = useState(null)
+  const [abrirVeiculoId,        setAbrirVeiculoId]        = useState(null)
   const [filtroInicialVeiculos, setFiltroInicialVeiculos] = useState(null)
-  const [focusBuscaVeiculos,   setFocusBuscaVeiculos]   = useState(false)
+  const [searchOpen,            setSearchOpen]            = useState(false)
 
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
@@ -82,10 +83,10 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
     setAba('veiculos')
   }
 
-  // Busca na sidebar: navega para Estoque e foca o input de busca
-  const irParaBusca = () => {
-    setAba('veiculos')
-    setFocusBuscaVeiculos(true)
+  // Busca global: abre o overlay de busca
+  const handleSearchNavigate = (aba, params = {}) => {
+    setAba(aba)
+    if (params.abrirVeiculoId) setAbrirVeiculoId(params.abrirVeiculoId)
   }
 
   const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
@@ -94,8 +95,25 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   // Sidebar uses fixed 60px — overlays content when expanded
   const SIDEBAR_COLLAPSED = 60
 
+  // ⌘K / Ctrl+K global
+  useEffect(() => {
+    const handler = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Outfit','Segoe UI',sans-serif" }}>
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={handleSearchNavigate}
+        veiculos={fleet.veiculos}
+        prestadores={fleet.prestadores}
+        clientes={fleet.clientes}
+      />
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         html{-webkit-text-size-adjust:100%}
@@ -118,7 +136,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
           tabs={TABS} aba={abaAtual} setAba={setAba}
           perfil={perfil} session={session} badge={badge}
           signOut={signOut} fleetError={!!fleet.error} role={role}
-          onSearch={irParaBusca}
+          onSearch={() => setSearchOpen(true)}
         />
       )}
 
@@ -153,8 +171,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}
-                                                   filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}
-                                                   focusBusca={focusBuscaVeiculos} onFocusBuscaHandled={() => setFocusBuscaVeiculos(false)}/>}
+                                                   filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}/>}
         {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}/>}
         {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
