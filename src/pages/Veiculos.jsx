@@ -542,11 +542,6 @@ export default function Veiculos({
               </div>
               </div>
               <DepreciacaoRow v={v}/>
-              {v.fipe_historico?.length >= 2 && (
-                <div onClick={e => e.stopPropagation()} style={{ marginTop:10 }}>
-                  <FipeHistoricoChart historico={v.fipe_historico} valorEntrada={v.valor_compra}/>
-                </div>
-              )}
             </div>
           )
         })}
