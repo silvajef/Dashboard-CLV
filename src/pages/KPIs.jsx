@@ -18,19 +18,27 @@ const chartTheme = {
 }
 
 export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso, onIrParaEstoque }) {
-  const [periodo, setPeriodo] = useState('total')
+  const [periodo, setPeriodo] = useState('30')
   const [secao, setSecao]     = useState('overview')
   const [editMetas, setEdit]  = useState(false)
   const [saving, setSaving]   = useState(false)
   const [metasLocal, setMetasLocal] = useState(null)
+  const [reportConfig, setReportConfig] = useState(null)
+  const [rpPeriodo, setRpPeriodo] = useState('30')
+  const [rpInicio, setRpInicio]   = useState('')
+  const [rpFim, setRpFim]         = useState('')
+  const [rpModoData, setRpModoData] = useState(false)
 
   const metas = metasLocal || metasDB || { vendas_mes:3, margem_min:8, dias_max_estoque:90, custo_max_pct:5 }
   const setM = (k,v) => setMetasLocal(p => ({ ...(p || metas), [k]: Number(v) }))
 
   const vPeriodo = useMemo(() => {
     if (periodo === 'total') return veiculos
-    const lim = parseInt(periodo)
-    return veiculos.filter(v => diasNoEstoque(v) <= lim || v.status !== 'vendido')
+    const dias = parseInt(periodo)
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - dias)
+    // Veículos ativos sempre incluídos; vendidos filtrados por data de venda
+    return veiculos.filter(v => v.status !== 'vendido' || (v.data_venda && new Date(v.data_venda) >= cutoff))
   }, [veiculos, periodo])
 
   const calc = useMemo(() => {
@@ -99,8 +107,28 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     </button>
   )
 
+  const gerarRelatorio = () => {
+    const opts = rpModoData
+      ? { periodo: 'total', dataInicio: rpInicio || null, dataFim: rpFim || null }
+      : { periodo: rpPeriodo }
+    if (reportConfig.tipo === 'vendas') abrirPDF(relatorioVendas(veiculos, opts))
+    else abrirPDF(relatorioKPI(veiculos, metas, opts))
+    setReportConfig(null)
+  }
+
   return (
     <div>
+      {reportConfig && (
+        <ModalRelatorioPeriodo
+          tipo={reportConfig.tipo}
+          periodo={rpPeriodo}    setPeriodo={setRpPeriodo}
+          inicio={rpInicio}      setInicio={setRpInicio}
+          fim={rpFim}            setFim={setRpFim}
+          modoData={rpModoData}  setModoData={setRpModoData}
+          onClose={() => setReportConfig(null)}
+          onGerar={gerarRelatorio}
+        />
+      )}
       {/* Controles */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12}}>
         <div>
@@ -108,8 +136,8 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           <p style={{margin:0,color:C.muted,fontSize:13}}>Indicadores de performance do estoque</p>
         </div>
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-          <Btn variant="ghost" small onClick={()=>abrirPDF(relatorioVendas(veiculos, periodo))}>📊 Relatório Vendas</Btn>
-          <Btn variant="ghost" small onClick={()=>abrirPDF(relatorioKPI(veiculos, metas, periodo))}>📈 Relatório KPI</Btn>
+          <Btn variant="ghost" small onClick={()=>setReportConfig({tipo:'vendas'})}>📊 Relatório Vendas</Btn>
+          <Btn variant="ghost" small onClick={()=>setReportConfig({tipo:'kpi'})}>📈 Relatório KPI</Btn>
           <div style={{display:'flex',gap:3,background:C.surface,borderRadius:8,padding:3,border:`1px solid ${C.border}`}}>
             {[['30','30d'],['60','60d'],['90','90d'],['total','Total']].map(([v,l])=>(
               <button key={v} onClick={()=>setPeriodo(v)} style={{background:periodo===v?C.amber:'transparent',color:periodo===v?'#000':C.muted,border:'none',borderRadius:6,padding:'5px 13px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Syne',sans-serif"}}>
@@ -611,6 +639,63 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           </Card>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ── Modal de seleção de período para relatórios ────────────────────────── */
+function ModalRelatorioPeriodo({ tipo, periodo, setPeriodo, inicio, setInicio, fim, setFim, modoData, setModoData, onClose, onGerar }) {
+  const titulo = tipo === 'vendas' ? 'Relatório de Vendas' : 'Relatório KPI Executivo'
+  const icon   = tipo === 'vendas' ? '📊' : '📈'
+  const btnBase = { border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:"'Syne',sans-serif" }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'#0009', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:28, width:440, maxWidth:'94vw' }}>
+        <h3 style={{ margin:'0 0 20px', fontSize:16, fontWeight:800, color:C.text }}>{icon} {titulo}</h3>
+
+        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, marginBottom:10 }}>MODO DE FILTRO</div>
+        <div style={{ display:'flex', gap:8, marginBottom:20 }}>
+          {[['Período Rápido', false], ['Intervalo de Datas', true]].map(([label, val]) => (
+            <button key={label} onClick={() => setModoData(val)}
+              style={{ ...btnBase, flex:1, padding:'9px 0', background: modoData===val ? C.amber : C.card, color: modoData===val ? '#000' : C.muted, border: modoData===val ? 'none' : `1px solid ${C.border}` }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {!modoData ? (
+          <>
+            <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, marginBottom:10 }}>PERÍODO</div>
+            <div style={{ display:'flex', gap:6, background:C.card, borderRadius:10, padding:4, border:`1px solid ${C.border}`, marginBottom:24 }}>
+              {[['30','30 dias'],['60','60 dias'],['90','90 dias'],['total','Total']].map(([v,l]) => (
+                <button key={v} onClick={() => setPeriodo(v)}
+                  style={{ ...btnBase, flex:1, padding:'8px 0', background: periodo===v ? C.amber : 'transparent', color: periodo===v ? '#000' : C.muted }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, marginBottom:10 }}>INTERVALO</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:24 }}>
+              {[['DATA INÍCIO', inicio, setInicio], ['DATA FIM', fim, setFim]].map(([label, val, set]) => (
+                <div key={label}>
+                  <label style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, display:'block', marginBottom:5 }}>{label}</label>
+                  <input type="date" value={val} onChange={e => set(e.target.value)}
+                    style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 12px', fontSize:13, width:'100%', outline:'none', colorScheme:'dark', boxSizing:'border-box' }}/>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ ...btnBase, flex:1, padding:'11px 0', background:C.card, color:C.muted, border:`1px solid ${C.border}` }}>Cancelar</button>
+          <button onClick={onGerar} style={{ ...btnBase, flex:1, padding:'11px 0', background:C.blue, color:'#fff' }}>Gerar Relatório</button>
+        </div>
+      </div>
     </div>
   )
 }

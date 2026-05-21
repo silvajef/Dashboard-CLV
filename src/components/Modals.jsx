@@ -62,21 +62,25 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
   const { isMobile } = useBreakpoint()
 
   const [f, setF] = useState({
-    placa:          data?.placa         || '',
-    tipo:           data?.tipo          || 'Van',
-    cor:            data?.cor           || '',
-    km:             data?.km            || 0,
-    combustivel:    data?.combustivel   || 'DIESEL',
-    data_entrada:   data?.data_entrada  || today(),
-    obs:            data?.obs           || '',
-    status:         data?.status        || 'pendente',
-    marca_nome:     data?.marca_nome    || '',
-    modelo_nome:    data?.modelo_nome   || '',
-    ano_modelo:     data?.ano_modelo    || '',
-    codigo_fipe:    data?.codigo_fipe   || '',
-    valor_fipe:     data?.valor_fipe    || 0,
-    valor_compra:   data?.valor_compra  || 0,
-    valor_anuncio:  data?.valor_anuncio || 0,   // NOVO v3.8
+    placa:               data?.placa              || '',
+    tipo:                data?.tipo               || 'Van',
+    cor:                 data?.cor                || '',
+    km:                  data?.km                 || 0,
+    combustivel:         data?.combustivel        || 'DIESEL',
+    data_entrada:        data?.data_entrada       || today(),
+    obs:                 data?.obs                || '',
+    status:              data?.status             || 'pendente',
+    marca_nome:          data?.marca_nome         || '',
+    modelo_nome:         data?.modelo_nome        || '',
+    ano_modelo:          data?.ano_modelo         || '',
+    codigo_fipe:         data?.codigo_fipe        || '',
+    valor_fipe:          data?.valor_fipe         || 0,
+    valor_compra:        data?.valor_compra       || 0,
+    valor_anuncio:       data?.valor_anuncio      || 0,
+    fornecedor_nome:     data?.fornecedor_nome    || '',
+    fornecedor_doc:      data?.fornecedor_doc     || '',
+    fornecedor_telefone: data?.fornecedor_telefone|| '',
+    fornecedor_email:    data?.fornecedor_email   || '',
   })
 
   const [fotos, setFotos] = useState(data?.fotos || [])
@@ -252,6 +256,22 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
         <div style={{ display:'grid', gridTemplateColumns:cols2, gap:14, marginTop:14 }}>
           <UpperInput label="Outros — Descrição" value={cf.outros_desc} onChange={v=>setCfK('outros_desc',v)} placeholder="EX: VISTORIAS, DESPACHANTE"/>
           <MoedaInput label="Outros — Valor (R$)" value={cf.outros_valor} onChange={v=>setCfK('outros_valor',v)} highlight={C.orange}/>
+        </div>
+      </div>
+
+      {/* ── FORNECEDOR ── */}
+      <div style={{ background:C.surface, border:`1px solid ${C.blue}33`, borderRadius:12, padding:16, marginBottom:16 }}>
+        <div style={{ fontSize:11, color:C.blue, fontWeight:700, letterSpacing:1, marginBottom:12 }}>👤 FORNECEDOR (QUEM VENDEU PARA NÓS)</div>
+        <div style={{ display:'grid', gridTemplateColumns:cols2, gap:14 }}>
+          <UpperInput label="Nome do Fornecedor" value={f.fornecedor_nome} onChange={v=>setUp('fornecedor_nome',v)} placeholder="PESSOA FÍSICA OU JURÍDICA"/>
+          <DocInput   label="CPF / CNPJ"         value={f.fornecedor_doc}  onChange={v=>set('fornecedor_doc',v)}/>
+          <UpperInput label="Telefone"            value={f.fornecedor_telefone} onChange={v=>setUp('fornecedor_telefone',v)} placeholder="(11) 99999-9999"/>
+          <div>
+            <label style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, display:'block', marginBottom:5 }}>E-MAIL</label>
+            <input type="email" value={f.fornecedor_email||''} onChange={e=>set('fornecedor_email',e.target.value.toLowerCase())}
+              placeholder="email@fornecedor.com.br"
+              style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
+          </div>
         </div>
       </div>
 

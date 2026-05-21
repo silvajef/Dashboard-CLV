@@ -16,6 +16,37 @@ const statusLabel = {
 }
 const periodoLabel = { '30':'Últimos 30 dias','60':'Últimos 60 dias','90':'Últimos 90 dias','total':'Todo o período' }
 
+/* ── Filtro de vendidos por período ou intervalo de datas ───────────────── */
+function filtrarVendidos(veiculos, opts = {}) {
+  const { periodo = 'total', dataInicio = null, dataFim = null } = opts
+  const todos = veiculos.filter(v => v.status === 'vendido')
+
+  if (dataInicio || dataFim) {
+    const inicio = dataInicio ? new Date(dataInicio) : null
+    const fim    = dataFim   ? new Date(dataFim + 'T23:59:59') : null
+    return todos.filter(v => {
+      if (!v.data_venda) return false
+      const d = new Date(v.data_venda)
+      if (inicio && d < inicio) return false
+      if (fim    && d > fim)    return false
+      return true
+    })
+  }
+
+  if (periodo === 'total') return todos
+
+  const dias = parseInt(periodo)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - dias)
+  return todos.filter(v => v.data_venda && new Date(v.data_venda) >= cutoff)
+}
+
+function labelOpts(opts = {}) {
+  const { periodo = 'total', dataInicio, dataFim } = opts
+  if (dataInicio || dataFim) return `${D(dataInicio) || '—'} a ${D(dataFim) || 'hoje'}`
+  return periodoLabel[periodo] || 'Todo o período'
+}
+
 /* ── CSS compartilhado ──────────────────────────────────────────────────── */
 const CSS = `
   *{box-sizing:border-box;margin:0;padding:0}
@@ -289,9 +320,8 @@ export function relatorioEstoque(veiculos) {
 /* ═══════════════════════════════════════════════════════════════════════════
    3. RELATÓRIO DE VENDAS
 ════════════════════════════════════════════════════════════════════════════ */
-export function relatorioVendas(veiculos, periodo = 'total') {
-  const vendidos = veiculos
-    .filter(v => v.status === 'vendido')
+export function relatorioVendas(veiculos, opts = {}) {
+  const vendidos = filtrarVendidos(veiculos, opts)
     .sort((a,b) => (b.data_venda||'').localeCompare(a.data_venda||''))
 
   const receita    = vendidos.reduce((s,v)=>s+(v.valor_venda||0), 0)
@@ -304,7 +334,7 @@ export function relatorioVendas(veiculos, periodo = 'total') {
   const ticket     = vendidos.length > 0 ? receita/vendidos.length : 0
 
   const body = `
-    ${header('RELATÓRIO DE VENDAS', periodoLabel[periodo]||'Todo o período')}
+    ${header('RELATÓRIO DE VENDAS', labelOpts(opts))}
 
     <h2>📊 Resumo Financeiro</h2>
     <div class="grid4">
@@ -377,10 +407,10 @@ export function relatorioVendas(veiculos, periodo = 'total') {
 /* ═══════════════════════════════════════════════════════════════════════════
    4. RELATÓRIO KPI EXECUTIVO
 ════════════════════════════════════════════════════════════════════════════ */
-export function relatorioKPI(veiculos, metas = {}, periodo = 'total') {
+export function relatorioKPI(veiculos, metas = {}, opts = {}) {
   const todos    = veiculos
   const ativos   = todos.filter(v => v.status !== 'vendido')
-  const vendidos = todos.filter(v => v.status === 'vendido')
+  const vendidos = filtrarVendidos(veiculos, opts)
 
   const receita    = vendidos.reduce((s,v)=>s+(v.valor_venda||0), 0)
   const custoAq    = vendidos.reduce((s,v)=>s+(v.valor_compra||0), 0)
@@ -446,7 +476,7 @@ export function relatorioKPI(veiculos, metas = {}, periodo = 'total') {
   }
 
   const body = `
-    ${header('RELATÓRIO EXECUTIVO — KPI', periodoLabel[periodo]||'Todo o período')}
+    ${header('RELATÓRIO EXECUTIVO — KPI', labelOpts(opts))}
 
     <h2>📊 Indicadores Principais</h2>
     <div class="grid4">
