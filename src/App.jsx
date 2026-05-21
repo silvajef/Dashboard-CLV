@@ -68,6 +68,15 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   const [filtroInicialVeiculos, setFiltroInicialVeiculos] = useState(null)
   const [searchOpen,            setSearchOpen]            = useState(false)
 
+  // ⌘K / Ctrl+K global — deve ficar aqui, antes de qualquer early return
+  useEffect(() => {
+    const handler = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
 
@@ -94,15 +103,6 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
   // Sidebar uses fixed 60px — overlays content when expanded
   const SIDEBAR_COLLAPSED = 60
-
-  // ⌘K / Ctrl+K global
-  useEffect(() => {
-    const handler = e => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true) }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Outfit','Segoe UI',sans-serif" }}>
