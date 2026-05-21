@@ -2,9 +2,10 @@
  * ProcessoVenda.jsx — Componentes do processo de venda
  * v3.9 — ModalIniciarVenda (wizard 3 passos) + EtapasProcesso (tracking inline)
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, Btn } from './UI'
-import { MoedaInput, UpperInput, DocInput } from './Inputs'
+import { MoedaInput, UpperInput, DocInput, SelectFipe, SelectInput } from './Inputs'
+import { useFipe, parseFipeValor } from '../hooks/useFipe'
 import {
   C, fmtR, fmtData, today,
   FORMAS_PAGAMENTO, criarEtapas, progressoProcesso,
@@ -13,6 +14,15 @@ import { imprimirDocumento } from '../lib/documento'
 import { useBreakpoint } from '../lib/responsive'
 import Icon from './Icon'
 import ProcessTimeline from './ProcessTimeline'
+
+const TIPOS_VEICULO = [
+  { value: 'Carro',    label: 'Carro' },
+  { value: 'Moto',     label: 'Moto' },
+  { value: 'Caminhão', label: 'Caminhão' },
+]
+
+const COMBUSTIVEIS = ['Gasolina','Etanol','Flex','Diesel','GNV','Elétrico','Híbrido']
+  .map(v => ({ value: v, label: v }))
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 const inp = (extra = {}) => ({
@@ -48,6 +58,83 @@ function SecHead({ title, cor }) {
   )
 }
 
+/* ── SecaoTroca — seção FIPE para veículo recebido em troca ─────────────── */
+function SecaoTroca({ f, set, setUp, isMobile }) {
+  const cols2 = isMobile ? '1fr' : '1fr 1fr'
+  const fipe  = useFipe(f.troca_tipo)
+
+  useEffect(() => {
+    if (!fipe.preco) return
+    set('troca_marca',       (fipe.sels.marcaNome  || '').toUpperCase())
+    set('troca_modelo',      (fipe.sels.modeloNome || '').toUpperCase())
+    set('troca_ano',         fipe.sels.anoNome || '')
+    set('troca_codigo_fipe', fipe.preco.CodigoFipe || '')
+    const val = parseFipeValor(fipe.preco.Valor)
+    set('troca_valor_fipe',  val)
+    set('troca_valor',       val)
+  }, [fipe.preco])
+
+  return (
+    <div style={{ background: `${C.orange}10`, border: `1px solid ${C.orange}44`, borderRadius: 10, padding: 14 }}>
+      <SecHead title="🔄 VEÍCULO RECEBIDO EM TROCA" cor={C.orange}/>
+      <p style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
+        Busque pela tabela FIPE — o veículo entrará no estoque ao concluir a venda.
+      </p>
+
+      {fipe.erro && (
+        <div style={{ fontSize: 11, color: C.red, background: `${C.red}15`, borderRadius: 6, padding: '6px 10px', marginBottom: 10 }}>
+          ⚠️ {fipe.erro}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 14 }}>
+        <SelectInput label="Tipo de Veículo" value={f.troca_tipo}
+          onChange={v => { set('troca_tipo', v); fipe.reset() }}
+          options={TIPOS_VEICULO}/>
+        <UpperInput label="Placa *" value={f.troca_placa}
+          onChange={v => setUp('troca_placa', v)} placeholder="ABC-1234"/>
+
+        <SelectFipe label="Marca (FIPE)" value={fipe.sels.marcaCod}
+          onChange={(cod, nome) => fipe.selecionarMarca(cod, nome)}
+          options={fipe.marcas} loading={fipe.loading === 'marcas'}
+          placeholder="Selecione a marca..."/>
+        <SelectFipe label="Modelo (FIPE)" value={fipe.sels.modeloCod}
+          onChange={(cod, nome) => fipe.selecionarModelo(cod, nome, fipe.sels.marcaCod)}
+          options={fipe.modelos} loading={fipe.loading === 'modelos'}
+          disabled={!fipe.sels.marcaCod} placeholder="Selecione o modelo..."/>
+
+        <SelectFipe label="Ano / Combustível (FIPE)" value={fipe.sels.anoCod}
+          onChange={(cod, nome) => fipe.selecionarAno(cod, nome, fipe.sels.marcaCod, fipe.sels.modeloCod)}
+          options={fipe.anos} loading={fipe.loading === 'anos'}
+          disabled={!fipe.sels.modeloCod} placeholder="Selecione o ano..."/>
+        <SelectInput label="Combustível" value={f.troca_combustivel}
+          onChange={v => set('troca_combustivel', v)} options={COMBUSTIVEIS}/>
+
+        {fipe.preco && (
+          <div style={{ gridColumn: '1 / -1', background: `${C.green}10`, border: `1px solid ${C.green}33`, borderRadius: 8, padding: '8px 14px', fontSize: 12 }}>
+            <span style={{ color: C.muted }}>Referência FIPE: </span>
+            <span style={{ fontWeight: 800, color: C.green, fontFamily: "'JetBrains Mono',monospace" }}>
+              {fipe.preco.Valor}
+            </span>
+            <span style={{ color: C.muted, marginLeft: 8 }}>{fipe.preco.MesReferencia}</span>
+          </div>
+        )}
+
+        <MoedaInput label="Valor da Troca (R$)" value={f.troca_valor}
+          onChange={v => set('troca_valor', v)} highlight={C.orange}/>
+        <UpperInput label="Cor" value={f.troca_cor}
+          onChange={v => setUp('troca_cor', v)} placeholder="BRANCO"/>
+        <Campo label="KM">
+          <input type="text" inputMode="numeric"
+            value={(f.troca_km || 0).toLocaleString('pt-BR')}
+            onChange={e => set('troca_km', parseInt(e.target.value.replace(/\D/g, ''), 10) || 0)}
+            style={inp({ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 })}/>
+        </Campo>
+      </div>
+    </div>
+  )
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    ModalIniciarVenda — Wizard 3 passos
 ════════════════════════════════════════════════════════════════════════════ */
@@ -73,13 +160,17 @@ export function ModalIniciarVenda({ veiculo, onSave, onClose, loading }) {
     qtd_parcelas:       0,
     valor_parcela:      0,
     // Troca
-    troca_placa:  '',
-    troca_marca:  '',
-    troca_modelo: '',
-    troca_ano:    '',
-    troca_km:     0,
-    troca_cor:    '',
-    troca_valor:  0,
+    troca_placa:       '',
+    troca_marca:       '',
+    troca_modelo:      '',
+    troca_ano:         '',
+    troca_km:          0,
+    troca_cor:         '',
+    troca_valor:       0,
+    troca_tipo:        'Carro',
+    troca_combustivel: '',
+    troca_codigo_fipe: '',
+    troca_valor_fipe:  0,
   })
 
   const set    = (k, v) => setF(p => ({ ...p, [k]: v }))
@@ -233,38 +324,7 @@ export function ModalIniciarVenda({ veiculo, onSave, onClose, loading }) {
           )}
 
           {/* Troca */}
-          {temTroca && (
-            <div style={{ background: `${C.orange}10`, border: `1px solid ${C.orange}44`, borderRadius: 10, padding: 14 }}>
-              <SecHead title="🔄 VEÍCULO RECEBIDO EM TROCA" cor={C.orange}/>
-              <p style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>
-                Este veículo será incluído automaticamente no estoque ao concluir o processo.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 14 }}>
-                <Campo label="Placa" required>
-                  <UpperInput value={f.troca_placa} onChange={v => setUp('troca_placa', v)} placeholder="ABC-1234"/>
-                </Campo>
-                <MoedaInput label="Valor da Troca (R$)" value={f.troca_valor} onChange={v => set('troca_valor', v)} highlight={C.orange}/>
-                <Campo label="Marca">
-                  <UpperInput value={f.troca_marca} onChange={v => setUp('troca_marca', v)} placeholder="VOLKSWAGEN"/>
-                </Campo>
-                <Campo label="Modelo">
-                  <UpperInput value={f.troca_modelo} onChange={v => setUp('troca_modelo', v)} placeholder="DELIVERY 9.170"/>
-                </Campo>
-                <Campo label="Ano">
-                  <UpperInput value={f.troca_ano} onChange={v => setUp('troca_ano', v)} placeholder="2022/2023"/>
-                </Campo>
-                <Campo label="Cor">
-                  <UpperInput value={f.troca_cor} onChange={v => setUp('troca_cor', v)} placeholder="BRANCO"/>
-                </Campo>
-                <Campo label="KM">
-                  <input type="text" inputMode="numeric"
-                    value={(f.troca_km||0).toLocaleString('pt-BR')}
-                    onChange={e => set('troca_km', parseInt(e.target.value.replace(/\D/g,''),10)||0)}
-                    style={inp({ fontFamily:"'JetBrains Mono',monospace", fontWeight:700 })}/>
-                </Campo>
-              </div>
-            </div>
-          )}
+          {temTroca && <SecaoTroca f={f} set={set} setUp={setUp} isMobile={isMobile}/>}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <Btn variant="secondary" style={{ flex: 1 }} onClick={() => setPasso(1)}>← Voltar</Btn>

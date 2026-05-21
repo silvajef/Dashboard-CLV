@@ -247,17 +247,21 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
   // 3. Veículo em troca → entra no estoque como "pendente"
   if (['troca','troca_financiado'].includes(processo.forma_pagamento) && processo.troca_placa) {
     const { error: e3 } = await supabase.from('veiculos').insert({
-      placa:       processo.troca_placa.toUpperCase(),
-      marca_nome:  processo.troca_marca  || '',
-      modelo_nome: processo.troca_modelo || '',
-      modelo:      processo.troca_modelo || '',
-      ano_modelo:  processo.troca_ano    || '',
-      km:          processo.troca_km     || 0,
-      cor:         (processo.troca_cor   || '').toUpperCase(),
-      valor_compra: processo.troca_valor || 0,
-      status:      'pendente',
+      placa:        processo.troca_placa.toUpperCase(),
+      marca_nome:   processo.troca_marca  || '',
+      modelo_nome:  processo.troca_modelo || '',
+      modelo:       processo.troca_modelo || '',
+      ano_modelo:   processo.troca_ano    || '',
+      km:           processo.troca_km     || 0,
+      cor:          (processo.troca_cor   || '').toUpperCase(),
+      valor_compra: processo.troca_valor  || 0,
+      tipo:         processo.troca_tipo        || 'Carro',
+      combustivel:  processo.troca_combustivel || null,
+      codigo_fipe:  processo.troca_codigo_fipe || null,
+      valor_fipe:   processo.troca_valor_fipe  || null,
+      status:       'pendente',
       data_entrada: new Date().toISOString().split('T')[0],
-      obs:         `RECEBIDO EM TROCA — PROC. #${processoId}`,
+      obs:          `RECEBIDO EM TROCA — PROC. #${processoId}`,
     })
     if (e3) throw e3
   }

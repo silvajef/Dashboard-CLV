@@ -13,6 +13,8 @@ async function get(path) {
   if (_cache.has(path)) return _cache.get(path)
   const res = await fetch(`${BASE}${path}`)
   if (!res.ok) throw new Error(`FIPE ${res.status}`)
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('json')) throw new Error('Serviço FIPE indisponível.')
   const data = await res.json()
   _cache.set(path, data)
   return data
