@@ -10,7 +10,9 @@ const BASE = '/api/fipe'
 const _cache = new Map()
 async function get(path) {
   if (_cache.has(path)) return _cache.get(path)
-  const res = await fetch(`${BASE}${path}`)
+  // Usa query param ?p= para evitar problemas de catch-all routing no Vercel
+  const url = `${BASE}?p=${encodeURIComponent(path.replace(/^\//, ''))}`
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`FIPE ${res.status} (${path})`)
   const ct = res.headers.get('content-type') || ''
   if (!ct.includes('json')) throw new Error('Serviço FIPE indisponível.')
@@ -67,7 +69,7 @@ export function useFipe(tipoVeiculo) {
     setSels({ marcaCod:'', marcaNome:'', modeloCod:'', modeloNome:'', anoCod:'', anoNome:'' })
     setErro(null)
     setLoading('marcas')
-    get(`/${ep}/brands`)
+    get(`/${ep}/marcas`)
       .then(data => setState(p => ({ ...p, marcas: data.map(normalizeItem) })))
       .catch(e => setErro(e.message))
       .finally(() => setLoading(''))
@@ -80,7 +82,7 @@ export function useFipe(tipoVeiculo) {
     if (!cod) return
     setLoading('modelos')
     try {
-      const data = await get(`/${ep}/brands/${cod}/models`)
+      const data = await get(`/${ep}/marcas/${cod}/modelos`)
       setState(p => ({ ...p, modelos: data.map(normalizeItem) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
@@ -93,7 +95,7 @@ export function useFipe(tipoVeiculo) {
     if (!cod) return
     setLoading('anos')
     try {
-      const anos = await get(`/${ep}/brands/${marcaCod}/models/${cod}/years`)
+      const anos = await get(`/${ep}/marcas/${marcaCod}/modelos/${cod}/anos`)
       setState(p => ({ ...p, anos: anos.map(normalizeItem) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }
@@ -106,7 +108,7 @@ export function useFipe(tipoVeiculo) {
     if (!cod) return
     setLoading('preco')
     try {
-      const raw = await get(`/${ep}/brands/${marcaCod}/models/${modeloCod}/years/${cod}`)
+      const raw = await get(`/${ep}/marcas/${marcaCod}/modelos/${modeloCod}/anos/${cod}`)
       setState(p => ({ ...p, preco: normalizePreco(raw) }))
     } catch(e) { setErro(e.message) }
     finally { setLoading('') }

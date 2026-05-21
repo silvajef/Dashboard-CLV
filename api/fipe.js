@@ -1,16 +1,13 @@
-// Vercel serverless proxy — injects X-Subscription-Token and forwards to fipe.parallelum.com.br/api/v2
-// Uses req.query.path (catch-all segments array) for reliable path extraction.
+// Vercel serverless proxy para FIPE API v2.
+// Chamado como /api/fipe?p=cars/brands — query param evita problemas de catch-all routing.
 export default async function handler(req, res) {
-  // Vercel catch-all: req.query.path is an array of segments, e.g. ['cars','brands','1','models']
-  const segments = req.query.path
-  const downstream = Array.isArray(segments) ? segments.join('/') : (segments || '')
-
-  if (!downstream) {
-    res.status(400).json({ error: 'No FIPE path provided' })
+  const p = req.query.p
+  if (!p) {
+    res.status(400).json({ error: 'Missing path parameter p' })
     return
   }
 
-  const url = `https://fipe.parallelum.com.br/api/v2/${downstream}`
+  const url = `https://fipe.parallelum.com.br/api/v2/${p}`
 
   let upstream
   try {

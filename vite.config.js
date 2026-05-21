@@ -14,7 +14,12 @@ export default defineConfig(({ mode }) => {
           target: 'https://fipe.parallelum.com.br',
           changeOrigin: true,
           secure: true,
-          rewrite: path => path.replace(/^\/api\/fipe/, '/api/v2'),
+          // Extrai o path do query param ?p= e reescreve para /api/v2/{path}
+          rewrite: path => {
+            const qs = path.split('?')[1] || ''
+            const p  = new URLSearchParams(qs).get('p') || ''
+            return `/api/v2/${p}`
+          },
           configure: proxy => {
             proxy.on('proxyReq', proxyReq => {
               proxyReq.setHeader('X-Subscription-Token', env.FIPE_TOKEN || '')
