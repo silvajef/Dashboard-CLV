@@ -1,4 +1,4 @@
-import { C, fmtR, STATUS_SERV_CFG } from '../lib/constants'
+import { C, fmtR, fmtData, STATUS_SERV_CFG } from '../lib/constants'
 import { Badge } from '../components/UI'
 
 export default function Historico({ veiculos, prestadores }) {
@@ -23,10 +23,14 @@ export default function Historico({ veiculos, prestadores }) {
               <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
                 <div style={{ background: C.surface, borderRadius: 8, padding: '8px 10px', textAlign: 'center', minWidth: 70 }}>
                   <div style={{ fontSize: 10, color: C.muted }}>DATA</div>
-                  <div style={{ fontWeight: 700, fontSize: 12 }}>{s.data_servico}</div>
+                  <div style={{ fontWeight: 700, fontSize: 12 }}>{fmtData(s.data_servico)}</div>
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{s.veiculo.modelo} — {s.veiculo.placa}</div>
+                  <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', marginBottom:2 }}>
+                    <span style={{ fontWeight:700, fontSize:14 }}>{s.veiculo.modelo}</span>
+                    {s.veiculo.placa && <span style={{ fontFamily:'monospace', fontSize:12, fontWeight:800, color:C.text, background:C.surface, border:`1px solid ${C.borderHi}`, padding:'2px 9px', borderRadius:5, letterSpacing:1 }}>{s.veiculo.placa}</span>}
+                    {s.veiculo.ano_modelo && <span style={{ fontSize:12, fontWeight:700, color:C.cyan, background:`${C.cyan}15`, padding:'2px 7px', borderRadius:5 }}>{s.veiculo.ano_modelo}</span>}
+                  </div>
                   <div style={{ fontSize: 12, color: C.muted }}>{s.tipo}: {s.descricao}</div>
                   <div style={{ fontSize: 12, color: C.muted }}>Prestador: {nomePrestador(s.prestador_id)}</div>
                 </div>

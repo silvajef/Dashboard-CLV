@@ -104,21 +104,23 @@ export const fmtN    = v => (v||0).toLocaleString('pt-BR')
  */
 export function fmtData(val) {
   if (!val) return ''
-  // Já está no formato DD/MM/AAAA
-  if (typeof val === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val
+  // Já no formato DD/MM/AA
+  if (typeof val === 'string' && /^\d{2}\/\d{2}\/\d{2}$/.test(val)) return val
+  // No formato DD/MM/AAAA — reduz para DD/MM/AA
+  if (typeof val === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val.slice(0, 6) + val.slice(-2)
   try {
     // String ISO YYYY-MM-DD
     if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
       const [y, m, d] = val.split('T')[0].split('-')
-      return `${d}/${m}/${y}`
+      return `${d}/${m}/${String(y).slice(-2)}`
     }
     // Objeto Date
     const d = new Date(val)
     if (isNaN(d.getTime())) return val
     const dd = String(d.getDate()).padStart(2, '0')
     const mm = String(d.getMonth() + 1).padStart(2, '0')
-    const yyyy = d.getFullYear()
-    return `${dd}/${mm}/${yyyy}`
+    const yy = String(d.getFullYear()).slice(-2)
+    return `${dd}/${mm}/${yy}`
   } catch {
     return val
   }

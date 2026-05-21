@@ -354,7 +354,12 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                 return(
                   <div key={v.id} style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                      <div><span style={{...mono,fontSize:11,color:C.muted,marginRight:6}}>#{i+1}</span><span style={{fontWeight:700,fontSize:13}}>{v.modelo}</span><span style={{fontSize:11,color:C.muted,marginLeft:6}}>{v.placa}</span></div>
+                      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                        <span style={{...mono,fontSize:11,color:C.muted}}>#{i+1}</span>
+                        <span style={{fontWeight:700,fontSize:13}}>{v.modelo}</span>
+                        {v.ano_modelo&&<span style={{fontSize:12,fontWeight:700,color:C.cyan,background:`${C.cyan}15`,padding:'1px 7px',borderRadius:5}}>{v.ano_modelo}</span>}
+                        {v.placa&&<span style={{fontFamily:'monospace',fontSize:12,fontWeight:800,color:C.text,background:C.surface,border:`1px solid ${C.borderHi}`,padding:'1px 8px',borderRadius:5,letterSpacing:1}}>{v.placa}</span>}
+                      </div>
                       <span style={{...mono,fontWeight:800,color:cor}}>{fmtDias(d)}</span>
                     </div>
                     <GaugeBar value={d} max={maxD} color={cor} height={4}/>
@@ -502,7 +507,12 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                 return(
                   <div key={v.id} style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-                      <div><span style={{...mono,fontSize:11,color:C.muted,marginRight:6}}>#{i+1}</span><span style={{fontWeight:700,fontSize:13}}>{v.modelo}</span><span style={{fontSize:11,color:C.muted,marginLeft:6}}>{v.placa}</span></div>
+                      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                        <span style={{...mono,fontSize:11,color:C.muted}}>#{i+1}</span>
+                        <span style={{fontWeight:700,fontSize:13}}>{v.modelo}</span>
+                        {v.ano_modelo&&<span style={{fontSize:12,fontWeight:700,color:C.cyan,background:`${C.cyan}15`,padding:'1px 7px',borderRadius:5}}>{v.ano_modelo}</span>}
+                        {v.placa&&<span style={{fontFamily:'monospace',fontSize:12,fontWeight:800,color:C.text,background:C.surface,border:`1px solid ${C.borderHi}`,padding:'1px 8px',borderRadius:5,letterSpacing:1}}>{v.placa}</span>}
+                      </div>
                       <span style={{...mono,fontWeight:800,color:cor}}>{fmtPct(v.pctCusto)}</span>
                     </div>
                     <GaugeBar value={v.pctCusto} max={Math.max((calc.rankingCusto[0]?.pctCusto||1),(metas.custo_max_pct||5)*2)} color={cor} height={5}/>

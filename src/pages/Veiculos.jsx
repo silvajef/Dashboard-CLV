@@ -106,7 +106,8 @@ export default function Veiculos({
             <span style={{ color:C.muted }}>|</span>
             <span style={{ fontSize:20 }}>{iconeVeiculo(vAtual.tipo)}</span>
             <span style={{ fontWeight:700, fontSize:16 }}>{nomeVeiculo(vAtual)}</span>
-            {vAtual.placa && <span style={{ fontSize:12, color:C.muted, fontFamily:'monospace', background:C.surface, padding:'2px 8px', borderRadius:6 }}>{vAtual.placa}</span>}
+            {vAtual.placa && <span style={{ fontFamily:'monospace', fontSize:13, fontWeight:800, color:C.text, background:C.surface, border:`1px solid ${C.borderHi}`, padding:'3px 10px', borderRadius:5, letterSpacing:1 }}>{vAtual.placa}</span>}
+            {vAtual.ano_modelo && <span style={{ fontSize:13, fontWeight:700, color:C.cyan, background:`${C.cyan}15`, padding:'2px 9px', borderRadius:5 }}>{vAtual.ano_modelo}</span>}
             <StatusBadge status={vAtual.status} size="sm"/>
             {procAtual && (
               <span style={{ fontSize:11, background:`${C.purple}20`, color:C.purple, padding:'3px 10px', borderRadius:20, fontWeight:700 }}>
@@ -447,13 +448,16 @@ export default function Veiculos({
                   <div style={{ fontWeight:700, fontSize:15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                     {nome}
                   </div>
-                  <div style={{ fontSize:12, color:C.muted, display:'flex', gap:5, flexWrap:'wrap', marginTop:2 }}>
-                    {v.placa && <span style={{ fontFamily:'monospace', fontWeight:600, color:C.text }}>{v.placa}</span>}
-                    {v.placa && <span>·</span>}
-                    {ano !== '—' && <><span>{ano}</span><span>·</span></>}
-                    <span>{fmtN(v.km)} km</span>
-                    {v.cor && <><span>·</span><span>{v.cor}</span></>}
-                    {v.tipo && <><span>·</span><span>{v.tipo}</span></>}
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', marginTop:5 }}>
+                    {v.placa && (
+                      <span style={{ fontFamily:'monospace', fontSize:13, fontWeight:800, color:C.text, background:C.surface, border:`1px solid ${C.borderHi}`, padding:'2px 10px', borderRadius:5, letterSpacing:1 }}>{v.placa}</span>
+                    )}
+                    {ano !== '—' && (
+                      <span style={{ fontSize:13, fontWeight:700, color:C.cyan, background:`${C.cyan}15`, padding:'2px 8px', borderRadius:5 }}>{ano}</span>
+                    )}
+                    <span style={{ fontSize:12, color:C.muted }}>{fmtN(v.km)} km</span>
+                    {v.cor  && <span style={{ fontSize:12, color:C.muted }}>· {v.cor}</span>}
+                    {v.tipo && <span style={{ fontSize:12, color:C.muted }}>· {v.tipo}</span>}
                   </div>
                   {/* Badge FIPE */}
                   {v.valor_fipe > 0 && (

@@ -38,15 +38,22 @@ function BadgeAnuncio({ status }) {
 
 /* ── Linha de veículo com anúncios por plataforma ─────────────────────── */
 function VeiculoRow({ veiculo, anunciosPorPlataforma, tokenValido, onPublicar, onPausar, onReativar, onFechar }) {
-  const titulo = [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo, veiculo.ano_modelo]
+  const titulo = [veiculo.marca_nome, veiculo.modelo_nome || veiculo.modelo]
     .filter(Boolean).join(' ')
 
   return (
     <div style={s.card}>
       <div style={{ ...s.row, justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>{titulo}</p>
-          <span style={{ fontSize: 11, color: C.muted }}>{veiculo.placa}</span>
+          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:5 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: C.text }}>{titulo}</p>
+            {veiculo.ano_modelo && (
+              <span style={{ fontSize:12, fontWeight:700, color:C.cyan, background:`${C.cyan}15`, padding:'2px 7px', borderRadius:5, flexShrink:0 }}>{veiculo.ano_modelo}</span>
+            )}
+          </div>
+          {veiculo.placa && (
+            <span style={{ fontFamily:'monospace', fontSize:12, fontWeight:800, color:C.text, background:C.surface, border:`1px solid ${C.borderHi}`, padding:'2px 9px', borderRadius:5, letterSpacing:1 }}>{veiculo.placa}</span>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>

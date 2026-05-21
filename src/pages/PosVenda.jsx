@@ -126,12 +126,11 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao, saveServico, re
                     {v.tipo === 'Pick-up' ? '🛻' : v.tipo?.includes('Caminhão') ? '🚛' : '🚐'}
                   </span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>
-                      {v.marca_nome} {v.modelo_nome}
-                      <span style={{ color: C.muted, fontWeight: 400 }}> — {v.placa}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: C.muted }}>
-                      {v.tipo} · {v.ano_modelo} · Vendido em {fmtData(vr.data_venda)}
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{v.marca_nome} {v.modelo_nome}</div>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:5, flexWrap:'wrap' }}>
+                      {v.placa && <span style={{ fontFamily:'monospace', fontSize:12, fontWeight:800, color:C.text, background:C.surface, border:`1px solid ${C.borderHi}`, padding:'2px 9px', borderRadius:5, letterSpacing:1 }}>{v.placa}</span>}
+                      {v.ano_modelo && <span style={{ fontSize:12, fontWeight:700, color:C.cyan, background:`${C.cyan}15`, padding:'2px 7px', borderRadius:5 }}>{v.ano_modelo}</span>}
+                      <span style={{ fontSize:12, color:C.muted }}>{v.tipo} · Vendido em {fmtData(vr.data_venda)}</span>
                     </div>
                     {cli && (
                       <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
@@ -382,13 +381,11 @@ function Garantias({ vendasComGarantia, veiculos }) {
                     {v.tipo === 'Pick-up' ? '🛻' : v.tipo?.includes('Caminhão') ? '🚛' : '🚐'}
                   </span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>
-                      {v.marca_nome} {v.modelo_nome}
-                      <span style={{ color: C.muted, fontWeight: 400 }}> — {v.placa}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: C.muted }}>
-                      Vendido em {fmtData(vr.data_venda)}
-                      {cli && <> · {cli.nome}</>}
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>{v.marca_nome} {v.modelo_nome}</div>
+                    <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:5, flexWrap:'wrap' }}>
+                      {v.placa && <span style={{ fontFamily:'monospace', fontSize:12, fontWeight:800, color:C.text, background:C.surface, border:`1px solid ${C.borderHi}`, padding:'2px 9px', borderRadius:5, letterSpacing:1 }}>{v.placa}</span>}
+                      {v.ano_modelo && <span style={{ fontSize:12, fontWeight:700, color:C.cyan, background:`${C.cyan}15`, padding:'2px 7px', borderRadius:5 }}>{v.ano_modelo}</span>}
+                      <span style={{ fontSize:12, color:C.muted }}>Vendido em {fmtData(vr.data_venda)}{cli && ` · ${cli.nome}`}</span>
                     </div>
                     <BadgeGarantia venda={vr} grande />
                   </div>
@@ -396,7 +393,7 @@ function Garantias({ vendasComGarantia, veiculos }) {
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>GARANTIA ATÉ</div>
                   <div style={{ fontWeight: 800, fontSize: 14, fontFamily: "'JetBrains Mono',monospace" }}>
-                    {vr.garantiaFim ? new Date(vr.garantiaFim).toLocaleDateString('pt-BR') : '—'}
+                    {vr.garantiaFim ? fmtData(vr.garantiaFim) : '—'}
                   </div>
                 </div>
               </div>
