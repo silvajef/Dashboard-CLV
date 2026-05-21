@@ -128,7 +128,8 @@ function SectionLabel({ label, expanded, paddingTop = 0 }) {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────
 export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, signOut, fleetError, role }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded,    setExpanded]    = useState(false)
+  const [searchHover, setSearchHover] = useState(false)
 
   const workspaceTabs = tabs.filter(t => !['usuarios','configuracoes'].includes(t.id))
   const adminTabs     = tabs.filter(t =>  ['usuarios','configuracoes'].includes(t.id))
@@ -200,17 +201,24 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
       </div>
 
       {/* ── Search ── */}
-      <div style={{
-        margin: expanded ? '10px 8px 4px' : '10px 6px 4px',
-        background: C.card, border: `1px solid ${C.border}`, borderRadius: 8,
-        padding: expanded ? '7px 10px' : 0,
-        height: 32,
-        display: 'flex', alignItems: 'center',
-        justifyContent: expanded ? 'flex-start' : 'center',
-        gap: expanded ? 6 : 0, cursor: 'text', overflow: 'hidden',
-        transition: 'padding 200ms ease, margin 200ms ease, gap 200ms ease',
-        flexShrink: 0,
-      }} title={!expanded ? 'Buscar veículo (⌘K)' : undefined}>
+      <div
+        onClick={() => setAba('veiculos')}
+        onMouseEnter={() => setSearchHover(true)}
+        onMouseLeave={() => setSearchHover(false)}
+        title={!expanded ? 'Buscar veículo' : undefined}
+        style={{
+          margin: expanded ? '10px 8px 4px' : '10px 6px 4px',
+          background: searchHover ? C.cardHi : C.card,
+          border: `1px solid ${searchHover ? C.borderHi : C.border}`,
+          borderRadius: 8,
+          padding: expanded ? '7px 10px' : 0,
+          height: 32,
+          display: 'flex', alignItems: 'center',
+          justifyContent: expanded ? 'flex-start' : 'center',
+          gap: expanded ? 6 : 0, cursor: 'pointer', overflow: 'hidden',
+          transition: 'padding 200ms ease, margin 200ms ease, gap 200ms ease, background 120ms ease, border-color 120ms ease',
+          flexShrink: 0,
+        }}>
         <span style={{
           width: 24, height: 24,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
