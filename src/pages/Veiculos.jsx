@@ -14,6 +14,34 @@ function nomeVeiculo(v) {
   const modelo = v.modelo_nome || v.modelo || ''
   return [marca, modelo].filter(Boolean).join(' ') || '—'
 }
+
+// Barra de alerta de depreciação FIPE — exibida dentro de cada card da listagem
+function DepreciacaoRow({ v }) {
+  if (!v.valor_fipe) return null
+  const fipe = v.valor_fipe
+  const ct   = (v.valor_compra||0) + custoV(v) + custoFixos(v)
+  const isRed   = fipe < ct
+  const isAmber = !isRed && v.valor_compra > 0 && fipe < v.valor_compra * 0.95
+  if (!isRed && !isAmber) return null
+
+  if (isRed) {
+    const gap = ct - fipe
+    return (
+      <div style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${C.red}22`, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, fontWeight:700, color:C.red, background:`${C.red}18`, padding:'2px 8px', borderRadius:20 }}>🔴 FIPE abaixo do custo total</span>
+        <span style={{ fontSize:11, color:C.red, fontFamily:"'JetBrains Mono',monospace" }}>faltam {fmtR(gap)} para cobrir o investimento</span>
+      </div>
+    )
+  }
+
+  const pct = ((v.valor_compra - fipe) / v.valor_compra) * 100
+  return (
+    <div style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${C.amber}22`, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+      <span style={{ fontSize:10, fontWeight:700, color:C.amber, background:`${C.amber}18`, padding:'2px 8px', borderRadius:20 }}>🟡 FIPE recuou {pct.toFixed(1)}% vs compra</span>
+      <span style={{ fontSize:11, color:C.muted, fontFamily:"'JetBrains Mono',monospace" }}>compra {fmtR(v.valor_compra)} · FIPE {fmtR(fipe)}</span>
+    </div>
+  )
+}
 function anoVeiculo(v) { return v.ano_modelo || v.ano || '—' }
 function iconeVeiculo(tipo = '') {
   const t = tipo.toLowerCase()
@@ -456,9 +484,9 @@ export default function Veiculos({
             <div key={v.id} onClick={()=>{ setVSel(v); setVTab(proc ? 'processo' : 'info') }}
               style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12,
                 padding:isMobile?'12px 14px':'14px 18px', cursor:'pointer',
-                display:'flex', alignItems:'center', justifyContent:'space-between',
-                borderLeft:`4px solid ${cfg.color}`, gap:12 }}>
-
+                display:'flex', flexDirection:'column',
+                borderLeft:`4px solid ${cfg.color}` }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
               <div style={{ display:'flex', alignItems:'center', gap:14, minWidth:0, flex:1 }}>
                 <span style={{ fontSize:22, flexShrink:0 }}>{iconeVeiculo(v.tipo)}</span>
                 <div style={{ minWidth:0 }}>
@@ -512,6 +540,8 @@ export default function Veiculos({
                 {!isMobile && <StatusBadge status={v.status} size="sm"/>}
                 <span style={{ color:C.muted, fontSize:18 }}>›</span>
               </div>
+              </div>
+              <DepreciacaoRow v={v}/>
             </div>
           )
         })}
