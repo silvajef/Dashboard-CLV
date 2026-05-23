@@ -28,12 +28,12 @@ const sel = (value, onChange, options, placeholder, disabled) => (
 export default function FipeSearch({ tipoVeiculo, onSelectPreco }) {
   const fipe = useFipe(tipoVeiculo)
 
-  const handleMarca  = v => { if (v) fipe.selecionarMarca(v) }
-  const handleModelo = v => { if (v) fipe.selecionarModelo(v) }
-  const handleAno    = v => { if (v) fipe.selecionarAno(v) }
+  const handleMarca  = v => { if (v) fipe.selecionarMarca(v, '') }
+  const handleModelo = v => { if (v) fipe.selecionarModelo(v, '', fipe.sels.marcaCod) }
+  const handleAno    = v => { if (v) fipe.selecionarAno(v, '', fipe.sels.marcaCod, fipe.sels.modeloCod) }
 
   const handleUsar = () => {
-    if (fipe.resultado) onSelectPreco(fipe.resultado)
+    if (fipe.preco) onSelectPreco(fipe.preco)
   }
 
   return (
@@ -58,15 +58,15 @@ export default function FipeSearch({ tipoVeiculo, onSelectPreco }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
         <div>
           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>MARCA</label>
-          {sel(fipe.marcaSel, handleMarca, fipe.marcas, 'Selecione a marca', false)}
+          {sel(fipe.sels.marcaCod, handleMarca, fipe.marcas, 'Selecione a marca', false)}
         </div>
         <div>
           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>MODELO</label>
-          {sel(fipe.modeloSel, handleModelo, fipe.modelos, 'Selecione o modelo', !fipe.marcaSel)}
+          {sel(fipe.sels.modeloCod, handleModelo, fipe.modelos, 'Selecione o modelo', !fipe.sels.marcaCod)}
         </div>
         <div>
           <label style={{ fontSize: 10, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 }}>ANO</label>
-          {sel(fipe.anoSel, handleAno, fipe.anos, 'Selecione o ano', !fipe.modeloSel)}
+          {sel(fipe.sels.anoCod, handleAno, fipe.anos, 'Selecione o ano', !fipe.sels.modeloCod)}
         </div>
       </div>
 
@@ -78,13 +78,13 @@ export default function FipeSearch({ tipoVeiculo, onSelectPreco }) {
       )}
 
       {/* Resultado */}
-      {fipe.resultado && !fipe.loading && (
+      {fipe.preco && !fipe.loading && (
         <div style={{ background: C.surface, border: `1px solid ${C.green}44`, borderRadius: 8, padding: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 12 }}>
             {[
-              ['Veículo FIPE', `${fipe.resultado.marca} ${fipe.resultado.modelo}`, C.text],
-              ['Ano/Combustível', fipe.resultado.anoModelo + ' / ' + fipe.resultado.combustivel, C.muted],
-              ['Código FIPE', fipe.resultado.codigoFipe, C.muted],
+              ['Veículo FIPE', `${fipe.preco.Marca} ${fipe.preco.Modelo}`, C.text],
+              ['Ano/Combustível', fipe.preco.AnoModelo + ' / ' + fipe.preco.Combustivel, C.muted],
+              ['Código FIPE', fipe.preco.CodigoFipe, C.muted],
             ].map(([l, v, c]) => (
               <div key={l} style={{ background: C.card, borderRadius: 7, padding: '8px 10px' }}>
                 <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, marginBottom: 2 }}>{l}</div>
@@ -96,9 +96,9 @@ export default function FipeSearch({ tipoVeiculo, onSelectPreco }) {
             <div>
               <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, marginBottom: 2 }}>PREÇO MÉDIO FIPE</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: C.green, fontFamily: "'JetBrains Mono',monospace" }}>
-                {fipe.resultado.valor}
+                {fipe.preco.Valor}
               </div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Ref: {fipe.resultado.mesReferencia}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Ref: {fipe.preco.MesReferencia}</div>
             </div>
             <button
               onClick={handleUsar}
