@@ -35,6 +35,17 @@ const diasEstoque = v => {
 }
 
 const mono = { fontFamily: "'JetBrains Mono',monospace" }
+const chakra = { fontFamily: "'Chakra Petch',monospace" }
+
+// Injected CSS: Chakra Petch font + KPI-specific hover/animation classes
+const KPI_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap');
+  @keyframes kpi-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .kpi-hero { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+  .kpi-nav:hover:not(.on) { color: ${C.text} !important; background: ${C.surface} !important; }
+  .kpi-ghost:hover { border-color: ${C.amber} !important; color: ${C.amber} !important; }
+  .kpi-strip-item:hover { background: ${C.cardHi} !important; }
+`
 
 // Shared theme object for LineTracker components — maps dark palette tokens
 const chartTheme = {
@@ -137,8 +148,15 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
   },[calc])
 
   const navBtn = (id, label, icon) => (
-    <button onClick={()=>setSecao(id)} style={{background:secao===id?C.amberDim:'transparent',color:secao===id?C.amber:C.muted,border:'none',borderBottom:secao===id?`2px solid ${C.amber}`:'2px solid transparent',padding:'0 14px',height:48,fontSize:12,fontWeight:secao===id?700:500,cursor:'pointer',display:'flex',alignItems:'center',gap:5,fontFamily:"'Syne',sans-serif",transition:'all 0.15s'}}>
-      {icon} {label}
+    <button onClick={()=>setSecao(id)} className={`kpi-nav${secao===id?' on':''}`} style={{
+      background:'transparent', color:secao===id?C.amber:C.faint, border:'none',
+      borderBottom:secao===id?`2px solid ${C.amber}`:'2px solid transparent',
+      padding:'0 16px', height:42, fontSize:10, fontWeight:secao===id?700:500,
+      cursor:'pointer', display:'flex', alignItems:'center', gap:5,
+      fontFamily:"'JetBrains Mono',monospace", letterSpacing:'0.08em',
+      textTransform:'uppercase', transition:'all 0.15s',
+    }}>
+      <span style={{color:secao===id?C.amber:C.faint, opacity:0.8}}>{icon}</span>{label}
     </button>
   )
 
@@ -152,6 +170,8 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
   }
 
   return (
+    <>
+    <style>{KPI_CSS}</style>
     <div>
       {drilldown && (
         <DrilldownModal
@@ -173,34 +193,51 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           onGerar={gerarRelatorio}
         />
       )}
-      {/* Controles */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,flexWrap:'wrap',gap:12}}>
-        <div>
-          <h2 style={{margin:'0 0 4px',fontSize:22,fontWeight:800}}>Dashboard KPI</h2>
-          <p style={{margin:0,color:C.muted,fontSize:13}}>Indicadores de performance do estoque</p>
-        </div>
-        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-          <Btn variant="ghost" small onClick={()=>setReportConfig({tipo:'vendas'})}>📊 Relatório Vendas</Btn>
-          <Btn variant="ghost" small onClick={()=>setReportConfig({tipo:'kpi'})}>📈 Relatório KPI</Btn>
-          <div style={{display:'flex',gap:3,background:C.surface,borderRadius:8,padding:3,border:`1px solid ${C.border}`}}>
-            {[['30','30d'],['60','60d'],['90','90d'],['total','Total']].map(([v,l])=>(
-              <button key={v} onClick={()=>setPeriodo(v)} style={{background:periodo===v?C.amber:'transparent',color:periodo===v?'#000':C.muted,border:'none',borderRadius:6,padding:'5px 13px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"'Syne',sans-serif"}}>
-                {l}
+
+      {/* ── Header ── */}
+      <div style={{marginBottom:0}}>
+        {/* Title + controls row */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14,flexWrap:'wrap',gap:10}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap'}}>
+            <h2 style={{margin:0,...chakra,fontSize:26,fontWeight:700,color:C.text,letterSpacing:'-0.5px'}}>DASHBOARD</h2>
+            <span style={{...chakra,fontSize:26,fontWeight:700,color:C.amber,letterSpacing:'-0.5px'}}>KPI</span>
+            <span style={{...mono,fontSize:10,color:C.faint,background:C.surface,border:`1px solid ${C.border}`,padding:'3px 10px',borderRadius:4,letterSpacing:'0.1em'}}>
+              {periodo==='total'?'TODO O PERÍODO':`ÚLTIMOS ${periodo}D`}
+            </span>
+            <span style={{...mono,fontSize:10,color:C.faint,letterSpacing:'0.08em'}}>
+              {calc.ativos.length}v estoque · {calc.vendidos.length}v vendidos
+            </span>
+          </div>
+          <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>
+            {/* Ghost buttons */}
+            {[['vendas','VENDAS ↗'],['kpi','RELATÓRIO ↗']].map(([tipo,label])=>(
+              <button key={tipo} className="kpi-ghost" onClick={()=>setReportConfig({tipo})}
+                style={{background:'transparent',border:`1px solid ${C.border}`,borderRadius:5,color:C.faint,padding:'5px 12px',fontSize:10,fontWeight:700,cursor:'pointer',...mono,letterSpacing:'0.08em',transition:'all 0.15s'}}>
+                {label}
               </button>
             ))}
+            {/* Period selector */}
+            <div style={{display:'flex',background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,overflow:'hidden'}}>
+              {[['30','30D'],['60','60D'],['90','90D'],['total','TUDO']].map(([v,l])=>(
+                <button key={v} onClick={()=>setPeriodo(v)}
+                  style={{background:periodo===v?C.amber:'transparent',color:periodo===v?'#000':C.faint,border:'none',padding:'6px 14px',fontSize:10,fontWeight:700,cursor:'pointer',...mono,letterSpacing:'0.08em',transition:'all 0.15s'}}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Sub-nav */}
-      <div style={{display:'flex',gap:2,borderBottom:`1px solid ${C.border}`,marginBottom:24,flexWrap:'wrap'}}>
-        {navBtn('overview',      'Visão Geral',  <Icon name="dashboard" size={14}/>)}
-        {navBtn('processos',     'Processos',    <Icon name="tag"       size={14}/>)}
-        {navBtn('giro',          'Giro',         <Icon name="refresh"   size={14}/>)}
-        {navBtn('rentabilidade', 'Rentabilidade',<Icon name="trending"  size={14}/>)}
-        {navBtn('custos',        'Custos',       <Icon name="coins"     size={14}/>)}
-        {navBtn('metas',         'Metas',        <Icon name="target"    size={14}/>)}
-        {navBtn('depreciacao',   'Depreciação',  <Icon name="trending"  size={14}/>)}
+        {/* Sub-navigation */}
+        <div style={{display:'flex',borderBottom:`1px solid ${C.border}`,marginBottom:24,flexWrap:'wrap'}}>
+          {navBtn('overview',      'Visão Geral',   <Icon name="dashboard" size={12}/>)}
+          {navBtn('processos',     'Processos',     <Icon name="tag"       size={12}/>)}
+          {navBtn('giro',          'Giro',          <Icon name="refresh"   size={12}/>)}
+          {navBtn('rentabilidade', 'Rentabilidade', <Icon name="trending"  size={12}/>)}
+          {navBtn('custos',        'Custos',        <Icon name="coins"     size={12}/>)}
+          {navBtn('metas',         'Metas',         <Icon name="target"    size={12}/>)}
+          {navBtn('depreciacao',   'Depreciação',   <Icon name="trending"  size={12}/>)}
+        </div>
       </div>
 
       {/* ── PROCESSOS EM ANDAMENTO ── */}
@@ -216,11 +253,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                 {label:'Concluídos',  value:processos.filter(p=>p.status==='concluido').length,color:C.green, icon:'checkDouble'},
                 {label:'Cancelados',  value:processos.filter(p=>p.status==='cancelado').length,color:C.red,   icon:'x'         },
               ].map(k=>(
-                <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
-                  <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8,display:'flex',alignItems:'center',gap:5}}>
-                    <Icon name={k.icon} size={12} style={{color:k.color}}/>{k.label}
+                <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'16px 18px',borderTop:`2px solid ${k.color}`}}>
+                  <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:10,display:'flex',alignItems:'center',gap:5}}>
+                    <Icon name={k.icon} size={11} style={{color:k.color}}/>{k.label}
                   </div>
-                  <div style={{...mono,fontSize:28,fontWeight:800,color:k.color}}>{k.value}</div>
+                  <div style={{...chakra,fontSize:30,fontWeight:700,color:k.color,lineHeight:1}}>{k.value}</div>
                 </div>
               ))}
             </div>
@@ -282,39 +319,48 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       {/* ── VISÃO GERAL ── */}
       {secao==='overview' && (
         <div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:20}}>
+          {/* Status strip */}
+          <div style={{display:'flex',background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden',marginBottom:20}}>
             {[
-              {label:'Estoque Ativo',   value:calc.ativos.length,                                    icon:'truck',   color:C.blue,  filtro:'todos'      },
-              {label:'Prontos p/ Venda',value:calc.ativos.filter(v=>v.status==='pronto').length,     icon:'check',   color:C.green, filtro:'pronto'     },
-              {label:'Em Manutenção',   value:calc.ativos.filter(v=>v.status==='manutencao').length, icon:'wrench',  color:C.amber, filtro:'manutencao' },
-              {label:'Em Venda',        value:calc.ativos.filter(v=>v.status==='em_venda').length,   icon:'tag',     color:C.purple,filtro:'em_venda'   },
-              {label:'Taxa de Giro',    value:fmtPct(calc.taxaGiro),                                 icon:'refresh', color:C.cyan                       },
-            ].map(k=>(
-              <KPI key={k.label} label={k.label} value={k.value} color={k.color}
-                icon={<Icon name={k.icon} size={20} style={{color:k.color}}/>}
-                onClick={k.filtro && onIrParaEstoque ? () => onIrParaEstoque(k.filtro) : undefined}/>
+              {label:'Estoque Ativo',   value:calc.ativos.length,                                     color:C.blue,   filtro:'todos'     },
+              {label:'Prontos p/ Venda',value:calc.ativos.filter(v=>v.status==='pronto').length,      color:C.green,  filtro:'pronto'    },
+              {label:'Em Manutenção',   value:calc.ativos.filter(v=>v.status==='manutencao').length,  color:C.amber,  filtro:'manutencao'},
+              {label:'Em Venda',        value:calc.ativos.filter(v=>v.status==='em_venda').length,    color:C.purple, filtro:'em_venda'  },
+              {label:'Taxa de Giro',    value:fmtPct(calc.taxaGiro),                                  color:C.cyan                      },
+            ].map((k,i)=>(
+              <div key={k.label} className={k.filtro?'kpi-strip-item':''} onClick={k.filtro&&onIrParaEstoque?()=>onIrParaEstoque(k.filtro):undefined}
+                style={{flex:1,padding:'14px 16px',borderRight:i<4?`1px solid ${C.border}`:'none',cursor:k.filtro?'pointer':'default',borderTop:`2px solid ${k.color}`,transition:'background 0.15s'}}>
+                <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:8}}>{k.label}</div>
+                <div style={{...chakra,fontSize:24,fontWeight:700,color:k.color,lineHeight:1}}>{k.value}</div>
+              </div>
             ))}
           </div>
-          <Grid cols={4} gap={12} style={{marginBottom:24}}>
+
+          {/* Hero cards — 4 clickable drilldown panels */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:28}}>
             {[
-              {label:'Valor em Estoque',value:fmtR(calc.valorEstTotal),  color:C.blue,  sub:'custo de aquisição ativo', key:'estoque'  },
-              {label:'Custo Manutenção',value:fmtR(calc.custoMntAtivos), color:C.amber, sub:`índice: ${fmtPct(calc.indiceCusto)}`, key:'manutencao'},
-              {label:'Receita Vendas',  value:fmtR(calc.receita),        color:C.green, sub:`${calc.vendidos.length} vend.`,        key:'receita'   },
-              {label:'Lucro Líquido',   value:fmtR(calc.lucro),          color:calc.lucro>=0?C.green:C.red, sub:`margem: ${fmtPct(calc.margem)}`, key:'lucro'},
-            ].map(k=>(
-              <div key={k.label} onClick={()=>setDrilldown(k.key)}
-                style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderLeft:`3px solid ${k.color}`,cursor:'pointer',transition:'border-color .15s,box-shadow .15s'}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor=k.color;e.currentTarget.style.boxShadow=`0 0 0 1px ${k.color}44`}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow='none';e.currentTarget.style.borderLeftColor=k.color}}>
-                <div style={{fontSize:10,color:C.muted,fontWeight:700,letterSpacing:0.5,marginBottom:8}}>{k.label}</div>
-                <div style={{...mono,fontSize:18,fontWeight:700,color:k.color}}>{k.value}</div>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}>
-                  <span style={{fontSize:11,color:C.muted}}>{k.sub}</span>
-                  <span style={{fontSize:10,color:k.color,fontWeight:700,background:`${k.color}18`,padding:'2px 8px',borderRadius:20}}>ver detalhes ›</span>
+              {label:'Valor em Estoque', value:fmtR(calc.valorEstTotal),  color:C.blue,  sub:'custo de aquisição ativo',              key:'estoque'   },
+              {label:'Custo Manutenção', value:fmtR(calc.custoMntAtivos), color:C.amber, sub:`índice: ${fmtPct(calc.indiceCusto)}`,   key:'manutencao'},
+              {label:'Receita Vendas',   value:fmtR(calc.receita),        color:C.green, sub:`${calc.vendidos.length} vendas no período`, key:'receita'},
+              {label:'Lucro Líquido',    value:fmtR(calc.lucro),          color:calc.lucro>=0?C.green:C.red, sub:`margem: ${fmtPct(calc.margem)}`, key:'lucro'},
+            ].map((k,i)=>(
+              <div key={k.label} onClick={()=>setDrilldown(k.key)} className="kpi-hero"
+                style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:'18px 20px 16px',cursor:'pointer',position:'relative',overflow:'hidden',animation:`kpi-in 0.3s ease ${i*0.07}s both`}}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow=`0 0 0 1px ${k.color}55, 0 8px 28px ${k.color}14`;e.currentTarget.style.transform='translateY(-2px)'}}
+                onMouseLeave={e=>{e.currentTarget.style.boxShadow='none';e.currentTarget.style.transform='translateY(0)'}}>
+                {/* Top accent bar */}
+                <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${k.color},${k.color}40)`}}/>
+                {/* BG radial glow */}
+                <div style={{position:'absolute',bottom:-28,right:-18,width:90,height:90,borderRadius:'50%',background:`radial-gradient(circle,${k.color}0d,transparent 70%)`,pointerEvents:'none'}}/>
+                <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',marginBottom:14}}>{k.label}</div>
+                <div style={{...chakra,fontSize:22,fontWeight:700,color:k.color,letterSpacing:'-0.5px',lineHeight:1,marginBottom:14}}>{k.value}</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:11,color:C.faint}}>{k.sub}</span>
+                  <span style={{...mono,fontSize:9,color:k.color,fontWeight:700,letterSpacing:'0.12em'}}>DETALHAR ›</span>
                 </div>
               </div>
             ))}
-          </Grid>
+          </div>
           <Grid cols={2} gap={16}>
             <Card>
               <SectionHead title="Performance por Tipo"/>
@@ -389,9 +435,9 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               {label:'Parados >60 dias',      value:calc.parados60.length,       color:calc.parados60.length>0?C.amber:C.green},
               {label:'Parados >90 dias',      value:calc.parados90.length,       color:calc.parados90.length>0?C.red:C.green},
             ].map(k=>(
-              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'18px 20px',borderTop:`3px solid ${k.color}`}}>
-                <div style={{fontSize:10,color:C.muted,fontWeight:700,letterSpacing:0.5,marginBottom:8}}>{k.label}</div>
-                <div style={{...mono,fontSize:28,fontWeight:700,color:k.color}}>{k.value}</div>
+              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'18px 20px',borderTop:`2px solid ${k.color}`}}>
+                <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:10}}>{k.label}</div>
+                <div style={{...chakra,fontSize:30,fontWeight:700,color:k.color,lineHeight:1}}>{k.value}</div>
               </div>
             ))}
           </Grid>
@@ -455,9 +501,9 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               {label:'Lucro Líquido',   value:fmtR(calc.lucro),         color:calc.lucro>=0?C.green:C.red},
               {label:'Margem Bruta',    value:fmtPct(calc.margem),      color:calc.margem>=(metas.margem_min||8)?C.green:C.red},
             ].map(k=>(
-              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
-                <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.label}</div>
-                <div style={{...mono,fontSize:18,fontWeight:700,color:k.color}}>{k.value}</div>
+              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'16px 18px',borderTop:`2px solid ${k.color}`}}>
+                <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:10}}>{k.label}</div>
+                <div style={{...chakra,fontSize:20,fontWeight:700,color:k.color,lineHeight:1}}>{k.value}</div>
               </div>
             ))}
           </Grid>
@@ -557,9 +603,9 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               {label:'Índice Custo/Estoque',  value:fmtPct(calc.indiceCusto),  color:calc.indiceCusto<(metas.custo_max_pct||5)?C.green:C.red},
               {label:'Custo Médio/Veículo',   value:fmtR(calc.custoMedioV),    color:C.cyan},
             ].map(k=>(
-              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
-                <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.label}</div>
-                <div style={{...mono,fontSize:20,fontWeight:700,color:k.color}}>{k.value}</div>
+              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'16px 18px',borderTop:`2px solid ${k.color}`}}>
+                <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:10}}>{k.label}</div>
+                <div style={{...chakra,fontSize:22,fontWeight:700,color:k.color,lineHeight:1}}>{k.value}</div>
               </div>
             ))}
           </Grid>
@@ -747,10 +793,10 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                 { label:'Alerta Crítico',  value:totalRed,       color:C.red,   desc:'FIPE < custo total' },
                 { label:'Alerta Atenção',  value:totalAmber,     color:C.amber, desc:'FIPE caiu >5% vs compra' },
               ].map(k=>(
-                <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderTop:`3px solid ${k.color}`}}>
-                  <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:8}}>{k.label}</div>
-                  <div style={{...mono,fontSize:28,fontWeight:800,color:k.color}}>{k.value}</div>
-                  <div style={{fontSize:11,color:C.muted,marginTop:4}}>{k.desc}</div>
+                <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'16px 18px',borderTop:`2px solid ${k.color}`}}>
+                  <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:10}}>{k.label}</div>
+                  <div style={{...chakra,fontSize:30,fontWeight:700,color:k.color,lineHeight:1}}>{k.value}</div>
+                  <div style={{...mono,fontSize:10,color:C.faint,marginTop:6}}>{k.desc}</div>
                 </div>
               ))}
             </div>
@@ -811,6 +857,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
         )
       })()}
     </div>
+    </>
   )
 }
 
