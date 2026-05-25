@@ -77,6 +77,8 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
     valor_fipe:          data?.valor_fipe         || 0,
     valor_compra:        data?.valor_compra       || 0,
     valor_anuncio:       data?.valor_anuncio      || 0,
+    chassi:              data?.chassi             || '',
+    renavam:             data?.renavam            || '',
     fornecedor_nome:     data?.fornecedor_nome    || '',
     fornecedor_doc:      data?.fornecedor_doc     || '',
     fornecedor_telefone: data?.fornecedor_telefone|| '',
@@ -162,6 +164,15 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
               onChange={e => set('km', parseInt(e.target.value.replace(/\D/g,''),10)||0)}
               style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:"'JetBrains Mono',monospace", fontWeight:700 }}
             />
+          </div>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:cols2, gap:14, marginTop:14 }}>
+          <UpperInput label="Chassi" value={f.chassi} onChange={v=>setUp('chassi',v)} placeholder="9BWZZZ377VT004251"/>
+          <div>
+            <label style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, display:'block', marginBottom:5 }}>RENAVAM</label>
+            <input type="text" inputMode="numeric" value={f.renavam||''} onChange={e=>set('renavam',e.target.value.replace(/\D/g,''))}
+              placeholder="00000000000"
+              style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:"'JetBrains Mono',monospace", fontWeight:700 }}/>
           </div>
         </div>
       </div>

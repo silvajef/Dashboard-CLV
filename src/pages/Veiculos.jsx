@@ -8,6 +8,7 @@ import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
 import Icon from '../components/Icon'
 import StatusBadge from '../components/StatusBadge'
 import FipeHistoricoChart from '../components/FipeHistoricoChart'
+import AbaDocumentos from '../components/AbaDocumentos'
 
 const russo  = "'Russo One', sans-serif"
 const chakra = "'Chakra Petch', monospace"
@@ -127,9 +128,10 @@ export default function Veiculos({
     const cfgV = STATUS_VEICULO_CFG[vAtual.status] || { color: C.muted, label: vAtual.status }
     const tabs = [
       ...(procAtual ? [{ id:'processo', icon:'🏷', label:'Processo de Venda' }] : []),
-      { id:'info',     icon:'📄', label:'Informações' },
-      { id:'servicos', icon:'🔧', label:`Serviços (${(vAtual.servicos||[]).length})` },
-      { id:'custos',   icon:'💰', label:'Custos' },
+      { id:'info',       icon:'📄', label:'Informações' },
+      { id:'servicos',   icon:'🔧', label:`Serviços (${(vAtual.servicos||[]).length})` },
+      { id:'custos',     icon:'💰', label:'Custos' },
+      { id:'documentos', icon:'📁', label:'Documentos' },
     ]
     const abaAtiva = procAtual && vTab === 'info' && vAtual.status === 'em_venda' ? 'processo' : vTab
 
@@ -491,6 +493,10 @@ export default function Veiculos({
                 </div>
               ))}
             </Grid>
+          )}
+
+          {abaAtiva === 'documentos' && (
+            <AbaDocumentos veiculo={vAtual} processo={procAtual || null}/>
           )}
         </div>
 

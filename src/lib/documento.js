@@ -1,229 +1,251 @@
 /**
- * documento.js — Geração do Contrato de Compra e Venda
- * v3.9 — Template profissional, ajuste o cabeçalho da empresa conforme necessário
+ * documento.js — Contrato CLV: Instrumento Particular de Compromisso de Compra e Venda
+ * Dados da empresa fixos (CNPJ, endereço, foro).
+ * Comprador diferenciado automaticamente por CPF (PF) vs CNPJ (PJ).
+ * Forma de pagamento: à vista, financiado, troca, troca+financiado.
  */
-import { fmtR, fmtData } from './constants'
+import { fmtR } from './constants'
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function linha(label, valor) {
-  return `<div class="campo"><span class="label">${label}:</span> <span class="valor">${valor || '—'}</span></div>`
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function somenteDigitos(v) { return (v || '').replace(/\D/g, '') }
+function isPJ(doc) { return somenteDigitos(doc).length === 14 }
+
+function dataExtenso() {
+  return new Date().toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  })
 }
 
-function fmtForma(p) {
-  const mapa = { avista:'À Vista', financiado:'Financiado', troca:'Troca', troca_financiado:'Troca + Financiamento' }
-  return mapa[p.forma_pagamento] || p.forma_pagamento
+function qualificacaoComprador(p) {
+  const nome = p.comprador_nome || '—'
+  const doc  = p.comprador_doc  || ''
+  const end  = p.comprador_endereco || '—'
+
+  if (isPJ(doc)) {
+    return `<b>${nome}</b>, Pessoa Jurídica de direito privado, inscrita no CNPJ nº <b>${doc}</b>, com sede em <b>${end}</b>`
+  }
+  return `<b>${nome}</b>, Pessoa Física, portador(a) do CPF nº <b>${doc}</b>, residente e domiciliado(a) em <b>${end}</b>`
 }
 
-function descPagamento(p) {
-  const linhas = []
-  linhas.push(`<b>Forma:</b> ${fmtForma(p)}`)
-  linhas.push(`<b>Valor total:</b> ${fmtR(p.valor_venda)}`)
+function textoPagamento(p) {
+  const total = fmtR(p.valor_venda || 0)
 
-  if (['financiado','troca_financiado'].includes(p.forma_pagamento)) {
-    if (p.valor_entrada > 0) linhas.push(`<b>Entrada:</b> ${fmtR(p.valor_entrada)}`)
-    if (p.banco_financiamento) linhas.push(`<b>Banco:</b> ${p.banco_financiamento}`)
-    if (p.qtd_parcelas)   linhas.push(`<b>Parcelas:</b> ${p.qtd_parcelas}x de ${fmtR(p.valor_parcela)}`)
+  if (p.forma_pagamento === 'avista') {
+    return `<b>R$ ${p.valor_venda?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'} (${total}), à vista</b>`
   }
-  if (['troca','troca_financiado'].includes(p.forma_pagamento) && p.troca_placa) {
-    linhas.push(`<b>Veículo em troca:</b> ${p.troca_marca || ''} ${p.troca_modelo || ''} ${p.troca_ano || ''} — Placa: ${p.troca_placa} — Valor: ${fmtR(p.troca_valor)}`)
+
+  if (p.forma_pagamento === 'financiado') {
+    const entrada = p.valor_entrada > 0 ? `, com entrada de ${fmtR(p.valor_entrada)}` : ''
+    const parc    = p.qtd_parcelas  > 0 ? `, saldo financiado em <b>${p.qtd_parcelas}x de ${fmtR(p.valor_parcela)}</b> via ${p.banco_financiamento || '—'}` : ''
+    return `<b>${total}</b>${entrada}${parc}`
   }
-  return linhas.join('<br>')
+
+  if (p.forma_pagamento === 'troca' && p.troca_placa) {
+    const complemento = (p.valor_venda || 0) - (p.troca_valor || 0)
+    const compTxt = complemento > 0
+      ? `, mais complemento em dinheiro de <b>${fmtR(complemento)}</b> à vista`
+      : ''
+    return `Mediante troca do veículo <b>${p.troca_marca || ''} ${p.troca_modelo || ''}</b> Ano: <b>${p.troca_ano || '—'}</b>, Placa: <b>${p.troca_placa}</b>, avaliado em <b>${fmtR(p.troca_valor || 0)}</b>${compTxt}. Valor total da transação: <b>${total}</b>`
+  }
+
+  if (p.forma_pagamento === 'troca_financiado' && p.troca_placa) {
+    const parc = p.qtd_parcelas > 0 ? `, com saldo financiado em <b>${p.qtd_parcelas}x de ${fmtR(p.valor_parcela)}</b> via ${p.banco_financiamento || '—'}` : ''
+    return `Mediante troca do veículo <b>${p.troca_marca || ''} ${p.troca_modelo || ''}</b> Ano: <b>${p.troca_ano || '—'}</b>, Placa: <b>${p.troca_placa}</b>, avaliado em <b>${fmtR(p.troca_valor || 0)}</b>, com entrada de <b>${fmtR(p.valor_entrada || 0)}</b>${parc}. Valor total da transação: <b>${total}</b>`
+  }
+
+  return `<b>${total}</b>`
 }
 
 // ── Gerador principal ──────────────────────────────────────────────────────────
+
 export function gerarDocumento(processo, veiculo) {
-  const hoje = new Date().toLocaleDateString('pt-BR')
-  const cidade = 'Goiânia' // ← ajuste a cidade da empresa
+  const marca    = veiculo.marca_nome  || '—'
+  const modelo   = veiculo.modelo_nome || veiculo.modelo || '—'
+  const hoje     = dataExtenso()
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Contrato de Compra e Venda — ${veiculo.placa || ''}</title>
+<title>Contrato CLV — ${veiculo.placa || ''}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
+    font-size: 11.5px;
     color: #111;
     background: #fff;
-    padding: 30px 40px;
-    max-width: 800px;
+    padding: 28px 44px;
+    max-width: 820px;
     margin: 0 auto;
+    line-height: 1.55;
   }
-  .topo { text-align: center; margin-bottom: 18px; border-bottom: 2px solid #111; padding-bottom: 12px; }
-  .empresa-nome { font-size: 18px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-  .empresa-info { font-size: 10px; color: #444; margin-top: 4px; }
-  h1 { font-size: 14px; text-align: center; letter-spacing: 2px; text-transform: uppercase;
-       margin: 18px 0 14px; border: 2px solid #111; padding: 8px; }
-  .secao { margin-bottom: 14px; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
-  .secao-titulo { background: #111; color: #fff; font-size: 10px; font-weight: 700;
-                  letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 10px; }
-  .secao-corpo { padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
-  .secao-corpo.full { grid-template-columns: 1fr; }
-  .campo { font-size: 11px; padding: 2px 0; }
-  .label { font-weight: 700; color: #333; }
-  .valor { color: #111; }
-  .clausulas { margin-bottom: 14px; }
-  .clausulas p { font-size: 10px; color: #333; line-height: 1.6; margin-bottom: 6px; text-align: justify; }
-  .clausulas p b { color: #111; }
-  .assinaturas { margin-top: 40px; display: flex; justify-content: space-around; gap: 20px; }
-  .assinatura { text-align: center; flex: 1; }
-  .linha-assinatura { border-top: 1px solid #111; margin-bottom: 4px; }
-  .assinatura small { font-size: 9px; color: #555; }
-  .testemunhas { margin-top: 30px; display: flex; justify-content: space-around; gap: 20px; }
-  .rodape { margin-top: 30px; font-size: 9px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 8px; }
-  .destaque { background: #f5f5f5; border-left: 3px solid #111; padding: 8px 10px; font-size: 11px; margin: 4px 0; }
+  .topo { text-align: center; margin-bottom: 16px; border-bottom: 3px double #111; padding-bottom: 12px; }
+  .empresa-nome { font-size: 17px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+  .empresa-sub  { font-size: 10px; color: #555; margin-top: 3px; }
+  h1 {
+    font-size: 12.5px; text-align: center; letter-spacing: 2px; text-transform: uppercase;
+    margin: 16px 0 18px; border: 2px solid #111; padding: 7px;
+  }
+  .corpo { text-align: justify; margin-bottom: 16px; }
+  .clausulas { margin-bottom: 12px; }
+  .clausulas p { margin-bottom: 9px; text-align: justify; font-size: 11px; }
+  .veiculo-box {
+    border: 1px solid #999; border-radius: 3px; padding: 8px 14px;
+    margin: 14px 0; background: #fafafa;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 3px 20px;
+  }
+  .veiculo-box .campo { font-size: 11px; }
+  .veiculo-box .label { font-weight: 700; }
+  .pagamento-box {
+    border-left: 4px solid #111; padding: 8px 12px; margin: 12px 0;
+    background: #f5f5f5; font-size: 11.5px;
+  }
+  .assinaturas { margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+  .assinatura  { text-align: center; }
+  .linha-ass   { border-top: 1px solid #111; margin-bottom: 5px; }
+  .assinatura small { font-size: 10px; color: #444; display: block; }
+  .testemunhas { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+  .rodape { margin-top: 28px; font-size: 9px; color: #999; text-align: center;
+            border-top: 1px solid #ddd; padding-top: 8px; }
   @media print {
-    body { padding: 15mm 20mm; }
-    button { display: none !important; }
+    body { padding: 10mm 18mm; }
+    .btn-imprimir { display: none !important; }
   }
 </style>
 </head>
 <body>
 
-<!-- ── BOTÃO IMPRIMIR (some na impressão) ── -->
-<div style="text-align:right;margin-bottom:16px;print:none">
-  <button onclick="window.print()" style="background:#111;color:#fff;border:none;padding:8px 20px;font-size:12px;cursor:pointer;border-radius:4px;font-family:Arial">
+<div class="btn-imprimir" style="text-align:right;margin-bottom:14px">
+  <button onclick="window.print()"
+    style="background:#111;color:#fff;border:none;padding:8px 22px;font-size:12px;cursor:pointer;border-radius:4px">
     🖨️ Imprimir / Salvar PDF
   </button>
 </div>
 
-<!-- ── CABEÇALHO DA EMPRESA ── -->
 <div class="topo">
-  <!-- ↓↓↓ AJUSTE OS DADOS DA EMPRESA AQUI ↓↓↓ -->
-  <div class="empresa-nome">CLV Veículos Comerciais</div>
-  <div class="empresa-info">
-    CNPJ: XX.XXX.XXX/XXXX-XX &nbsp;|&nbsp; Endereço: Rua Exemplo, 123 — ${cidade}/GO
-    <br>Telefone: (62) XXXX-XXXX &nbsp;|&nbsp; E-mail: contato@clvveiculos.com.br
+  <div class="empresa-nome">CLV – Veículos de Cargas Leves e Vans Ltda</div>
+  <div class="empresa-sub">
+    CNPJ: 24.934.998/0001-60 &nbsp;|&nbsp; Rua Maria Daffre, nº 442, Vila Prudente — São Paulo/SP
   </div>
 </div>
 
-<h1>Instrumento Particular de Compra e Venda de Veículo Automotor</h1>
+<h1>Instrumento Particular de Compromisso de Compra e Venda</h1>
 
-<!-- ── VENDEDOR ── -->
-<div class="secao">
-  <div class="secao-titulo">1. Vendedor</div>
-  <div class="secao-corpo">
-    ${linha('Razão Social / Nome', 'CLV Veículos Comerciais')}
-    ${linha('CNPJ', 'XX.XXX.XXX/XXXX-XX')}
-    ${linha('Endereço', 'Rua Exemplo, 123 — ' + cidade + '/GO')}
-    ${linha('Representante', processo.vendedor_nome || '—')}
-  </div>
+<div class="corpo">
+  <p>
+    Pelo presente Instrumento Particular de Compromisso de Compra e Venda, de um lado
+    <b>CLV – VEICULOS DE CARGAS LEVES E VANS LTDA</b>, Pessoa Jurídica de direito privado,
+    devidamente inscrita no C.N.P.J. sob n° <b>24.934.998/0001-60</b>, sediada na capital
+    <b>SÃO PAULO</b>, estabelecida na <b>RUA MARIA DAFFRE, Nº 442, VILA PRUDENTE</b>, de ora
+    em diante chamada simplesmente de <b>COMPROMITENTE VENDEDOR</b>, e de outro lado o(a):
+  </p>
+
+  <p style="margin:12px 0 12px 20px">
+    ${qualificacaoComprador(processo)},
+    de ora em diante chamado(a) simplesmente de <b>COMPROMITENTE COMPRADOR(A)</b>.
+  </p>
+
+  <p>
+    Têm, entre si, como justo e contratado o quanto segue, em relação ao veículo descrito abaixo:
+  </p>
 </div>
 
-<!-- ── COMPRADOR ── -->
-<div class="secao">
-  <div class="secao-titulo">2. Comprador</div>
-  <div class="secao-corpo">
-    ${linha('Nome completo', processo.comprador_nome)}
-    ${linha('CPF / CNPJ', processo.comprador_doc)}
-    ${linha('Telefone', processo.comprador_telefone)}
-    ${linha('E-mail', processo.comprador_email)}
-    ${linha('Endereço', processo.comprador_endereco)}
-  </div>
+<div class="veiculo-box">
+  <div class="campo"><span class="label">Marca:</span> ${marca}</div>
+  <div class="campo"><span class="label">Modelo:</span> ${modelo}</div>
+  <div class="campo"><span class="label">Cor:</span> ${veiculo.cor || '—'}</div>
+  <div class="campo"><span class="label">Ano:</span> ${veiculo.ano_modelo || '—'}</div>
+  <div class="campo"><span class="label">Placa:</span> ${veiculo.placa || '—'}</div>
+  <div class="campo"><span class="label">Chassi:</span> ${veiculo.chassi || '—'}</div>
+  <div class="campo"><span class="label">RENAVAM:</span> ${veiculo.renavam || '—'}</div>
+  <div class="campo"><span class="label">Combustível:</span> ${veiculo.combustivel || '—'}</div>
 </div>
 
-<!-- ── VEÍCULO ── -->
-<div class="secao">
-  <div class="secao-titulo">3. Dados do Veículo</div>
-  <div class="secao-corpo">
-    ${linha('Marca / Modelo', (veiculo.marca_nome || '') + ' ' + (veiculo.modelo_nome || veiculo.modelo || ''))}
-    ${linha('Ano', veiculo.ano_modelo || veiculo.ano || '—')}
-    ${linha('Placa', veiculo.placa)}
-    ${linha('Cor', veiculo.cor)}
-    ${linha('Combustível', veiculo.combustivel)}
-    ${linha('KM atual', (veiculo.km || 0).toLocaleString('pt-BR') + ' km')}
-    ${linha('Código FIPE', veiculo.codigo_fipe || '—')}
-    ${linha('Tabela FIPE', veiculo.valor_fipe ? fmtR(veiculo.valor_fipe) : '—')}
-  </div>
-</div>
-
-<!-- ── PAGAMENTO ── -->
-<div class="secao">
-  <div class="secao-titulo">4. Valor e Forma de Pagamento</div>
-  <div class="secao-corpo full">
-    <div class="destaque">${descPagamento(processo)}</div>
-  </div>
+<div style="margin-bottom:16px;font-size:11.5px">
+  <b>Pago da seguinte forma:</b>
+  <div class="pagamento-box">${textoPagamento(processo)}</div>
 </div>
 
 ${['troca','troca_financiado'].includes(processo.forma_pagamento) && processo.troca_placa ? `
-<!-- ── VEÍCULO EM TROCA ── -->
-<div class="secao">
-  <div class="secao-titulo">5. Veículo Recebido em Troca</div>
-  <div class="secao-corpo">
-    ${linha('Marca / Modelo', (processo.troca_marca || '') + ' ' + (processo.troca_modelo || ''))}
-    ${linha('Ano', processo.troca_ano)}
-    ${linha('Placa', processo.troca_placa)}
-    ${linha('Cor', processo.troca_cor)}
-    ${linha('KM', (processo.troca_km || 0).toLocaleString('pt-BR') + ' km')}
-    ${linha('Valor acordado', fmtR(processo.troca_valor))}
-  </div>
+<div style="margin-bottom:16px;font-size:11px;border:1px solid #ccc;border-radius:3px;padding:8px 14px">
+  <b>Veículo recebido em troca:</b>
+  ${processo.troca_marca || ''} ${processo.troca_modelo || ''} — Placa: ${processo.troca_placa}
+  — Ano: ${processo.troca_ano || '—'} — Cor: ${processo.troca_cor || '—'}
+  — KM: ${(processo.troca_km || 0).toLocaleString('pt-BR')} — Valor: ${fmtR(processo.troca_valor || 0)}
 </div>` : ''}
 
-<!-- ── CLÁUSULAS ── -->
 <div class="clausulas">
-  <p><b>Cláusula 1ª — Da transferência de propriedade:</b> O(A) VENDEDOR(A) declara ser o(a) legítimo(a) proprietário(a) do veículo descrito acima e, pelo presente instrumento, transfere ao(à) COMPRADOR(A) a plena e irrevogável propriedade do mesmo, nas condições aqui estabelecidas.</p>
-  <p><b>Cláusula 2ª — Do estado do veículo:</b> O veículo é vendido no estado em que se encontra, sendo de conhecimento do(a) COMPRADOR(A) suas condições gerais, ressalvadas as garantias legais previstas no Código de Defesa do Consumidor.</p>
-  <p><b>Cláusula 3ª — Da documentação:</b> O(A) VENDEDOR(A) obriga-se a fornecer ao(à) COMPRADOR(A) todos os documentos necessários para a transferência do veículo junto ao DETRAN, no prazo de 30 (trinta) dias úteis após a assinatura deste contrato, salvo motivo de força maior devidamente comprovado.</p>
-  <p><b>Cláusula 4ª — Do pagamento:</b> O(A) COMPRADOR(A) obriga-se a efetuar o pagamento conforme a forma acordada na Cláusula 4, sendo que a inadimplência por prazo superior a 30 (trinta) dias acarretará rescisão automática deste instrumento, com devolução do veículo e das parcelas pagas, descontadas as despesas comprovadas.</p>
-  <p><b>Cláusula 5ª — Da entrega:</b> A entrega do veículo ocorrerá somente após a confirmação de todas as etapas do processo de venda, incluindo aprovação de financiamento (quando aplicável), vistoria cautelar e quitação integral ou liberação de crédito pelo agente financeiro.</p>
-  <p><b>Cláusula 6ª — Do foro:</b> Para dirimir quaisquer controvérsias oriundas do presente instrumento, as partes elegem o foro da comarca de ${cidade}/GO, com renúncia expressa a qualquer outro, por mais privilegiado que seja.</p>
+  <p><b>1º.</b> Nós, da CLV Multimarcas, agradecemos a sua preferência e, pensando em sua plena satisfação, estamos entregando o seu veículo revisado e com garantia. Lembrando que o veículo é USADO e é vendido no ESTADO em que se encontra, devendo ser vistoriado pelo comprador ou profissional de sua confiança. A CLV Multimarcas garante o veículo acima pelo prazo de 90 (NOVENTA) DIAS, contados da data de entrega, desde que sejam atendidas as condições NORMAIS DE USO, sendo que qualquer serviço referente à garantia deverá ser feito diretamente em nossa oficina ou terceiro indicado por esta. Caso o comprador tome a iniciativa de fazer os reparos pertencentes à garantia oferecida, estará automaticamente renunciando à mesma.</p>
+
+  <p><b>2º.</b> A partir desta data, o(a) COMPROMITENTE COMPRADOR(A) assume total responsabilidade por multas e débitos de qualquer natureza, e/ou outros delitos que vierem a recair sobre o veículo, inclusive aqueles anteriores à data desta assinatura que não tenham sido informados pelo COMPROMITENTE VENDEDOR.</p>
+
+  <p><b>3º.</b> A CLV Multimarcas não fornece garantia nos equipamentos de Carroceria, Baú, Refrigeração, hidráulicos ou qualquer outro sistema operacional equipado no veículo.</p>
+
+  <p><b>4º.</b> O(A) COMPROMITENTE VENDEDOR(A) declara que sobre o bem não há quaisquer ônus ou litígios, penhoras ou arrestos, sequestros, multas ou débitos de qualquer natureza, responsabilizando-se civil e criminalmente pela procedência e legitimidade do veículo.</p>
+
+  <p><b>5º.</b> Para serem dirimidas quaisquer dúvidas ou litígios relativos ao presente instrumento, fica eleito desde já o <b>FORO REGIONAL DE VILA PRUDENTE</b>, com renúncia de qualquer outro, por mais privilegiado que seja.</p>
 </div>
 
-<!-- ── ASSINATURAS ── -->
-<div style="margin-top:8px;font-size:10px;text-align:center;color:#555">
-  ${cidade}, ${hoje}
-</div>
+<p style="text-align:center;margin-top:20px;font-size:11px">
+  São Paulo, ${hoje}
+</p>
 
 <div class="assinaturas">
   <div class="assinatura">
-    <div style="height:50px"></div>
-    <div class="linha-assinatura"></div>
-    <div><b>VENDEDOR</b></div>
-    <small>CLV Veículos Comerciais</small><br>
-    <small>${processo.vendedor_nome || ''}</small>
+    <div style="height:52px"></div>
+    <div class="linha-ass"></div>
+    <small><b>COMPROMITENTE VENDEDOR</b></small>
+    <small>CLV VEICULOS DE CARGAS LEVES E VANS LTDA</small>
+    <small>CNPJ: 24.934.998/0001-60</small>
+    ${processo.vendedor_nome ? `<small>Repr.: ${processo.vendedor_nome}</small>` : ''}
   </div>
   <div class="assinatura">
-    <div style="height:50px"></div>
-    <div class="linha-assinatura"></div>
-    <div><b>COMPRADOR</b></div>
-    <small>${processo.comprador_nome || ''}</small><br>
-    <small>CPF/CNPJ: ${processo.comprador_doc || ''}</small>
+    <div style="height:52px"></div>
+    <div class="linha-ass"></div>
+    <small><b>COMPROMITENTE COMPRADOR(A)</b></small>
+    <small>${processo.comprador_nome || ''}</small>
+    <small>${isPJ(processo.comprador_doc) ? 'CNPJ' : 'CPF'}: ${processo.comprador_doc || ''}</small>
   </div>
 </div>
 
-<div class="testemunhas" style="margin-top:30px">
+<div class="testemunhas">
   <div class="assinatura">
     <div style="height:40px"></div>
-    <div class="linha-assinatura"></div>
-    <div style="font-size:10px"><b>TESTEMUNHA 1</b></div>
-    <small>Nome: _________________________</small><br>
-    <small>CPF: __________________________</small>
+    <div class="linha-ass"></div>
+    <small><b>TESTEMUNHA 1</b></small>
+    <small>Nome: ________________________________</small>
+    <small>CPF: _________________________________</small>
   </div>
   <div class="assinatura">
     <div style="height:40px"></div>
-    <div class="linha-assinatura"></div>
-    <div style="font-size:10px"><b>TESTEMUNHA 2</b></div>
-    <small>Nome: _________________________</small><br>
-    <small>CPF: __________________________</small>
+    <div class="linha-ass"></div>
+    <small><b>TESTEMUNHA 2</b></small>
+    <small>Nome: ________________________________</small>
+    <small>CPF: _________________________________</small>
   </div>
 </div>
 
 <div class="rodape">
-  Documento gerado em ${hoje} pelo sistema FleetControl v3.9 — CLV Veículos Comerciais<br>
-  Este documento tem validade jurídica quando assinado por ambas as partes e testemunhas.
+  Documento gerado em ${hoje} pelo sistema Dashboard CLV — uso interno<br>
+  Válido somente quando assinado por ambas as partes e duas testemunhas.
 </div>
 
 </body>
 </html>`
 }
 
-/** Abre o documento em nova aba e inicia impressão */
+/** Abre o contrato em nova aba e inicia impressão */
 export function imprimirDocumento(processo, veiculo) {
   const html = gerarDocumento(processo, veiculo)
   const w = window.open('', '_blank')
-  if (!w) { alert('Permita pop-ups para gerar o documento.'); return }
+  if (!w) { alert('Permita pop-ups para gerar o contrato.'); return }
   w.document.write(html)
   w.document.close()
+}
+
+/** Gera Blob HTML para upload no Supabase Storage */
+export function gerarBlobContrato(processo, veiculo) {
+  return new Blob([gerarDocumento(processo, veiculo)], { type: 'text/html' })
 }

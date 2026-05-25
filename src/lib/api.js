@@ -363,3 +363,97 @@ export async function registrarVenda({ veiculo_id, cliente, valor_venda, data_ve
 
   return venda
 }
+
+/* ── DOCUMENTOS (v4.0) ─────────────────────────────────────────────────────── */
+const BUCKET_DOCS = 'documentos-veiculos'
+
+export async function getDocumentos(veiculoId) {
+  const { data, error } = await supabase
+    .from('documentos')
+    .select('*')
+    .eq('veiculo_id', veiculoId)
+    .order('criado_em', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+async function comprimirSeImagem(file) {
+  if (!file.type.startsWith('image/')) return file
+  return new Promise(resolve => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const ratio  = Math.min(1, 1920 / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width  = Math.round(img.width  * ratio)
+      canvas.height = Math.round(img.height * ratio)
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', 0.82)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
+export async function uploadDocumento({ veiculoId, file, categoria, nome }) {
+  const payload  = await comprimirSeImagem(file)
+  const ext      = file.name.split('.').pop().toLowerCase()
+  const safeName = nome.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path     = `${veiculoId}/${Date.now()}_${safeName}.${ext}`
+
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET_DOCS)
+    .upload(path, payload, { contentType: file.type, upsert: false })
+  if (upErr) throw upErr
+
+  const { data, error } = await supabase
+    .from('documentos')
+    .insert({
+      veiculo_id:   veiculoId,
+      categoria,
+      nome,
+      storage_path: path,
+      tipo_mime:    file.type,
+      tamanho_kb:   Math.round(payload.size / 1024),
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function uploadContratoGerado({ veiculoId, blob, nomeArquivo }) {
+  const path = `${veiculoId}/${Date.now()}_${nomeArquivo}.html`
+  const { error: upErr } = await supabase.storage
+    .from(BUCKET_DOCS)
+    .upload(path, blob, { contentType: 'text/html', upsert: false })
+  if (upErr) throw upErr
+
+  const { data, error } = await supabase
+    .from('documentos')
+    .insert({
+      veiculo_id:   veiculoId,
+      categoria:    'contrato_venda',
+      nome:         nomeArquivo,
+      storage_path: path,
+      tipo_mime:    'text/html',
+      tamanho_kb:   Math.round(blob.size / 1024),
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export function getDocumentoUrl(storagePath) {
+  const { data } = supabase.storage.from(BUCKET_DOCS).getPublicUrl(storagePath)
+  return data?.publicUrl || null
+}
+
+export async function deleteDocumento(id, storagePath) {
+  const { error: e1 } = await supabase.storage.from(BUCKET_DOCS).remove([storagePath])
+  if (e1) throw e1
+  const { error: e2 } = await supabase.from('documentos').delete().eq('id', id)
+  if (e2) throw e2
+}
