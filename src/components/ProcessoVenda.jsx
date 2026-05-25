@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react'
 import { Modal, Btn } from './UI'
-import { MoedaInput, UpperInput, DocInput, SelectFipe, SelectInput } from './Inputs'
+import { MoedaInput, UpperInput, DocInput, SelectFipe, SelectInput, DateInput } from './Inputs'
 import { useFipe, parseFipeValor } from '../hooks/useFipe'
 import {
   C, fmtR, fmtData, today,
@@ -392,6 +392,7 @@ export function ModalIniciarVenda({ veiculo, onSave, onClose, loading }) {
 export function EtapasProcesso({ processo, veiculo, onSave, onConcluir, onCancelar, saving }) {
   const { concluidas, total, pct } = progressoProcesso(processo.etapas)
   const todasConcluidas = concluidas === total && total > 0
+  const [dataVenda, setDataVenda] = useState(today())
 
   const marcarEtapa = (index) => {
     const novasEtapas = processo.etapas.map((e, i) => {
@@ -481,7 +482,15 @@ export function EtapasProcesso({ processo, veiculo, onSave, onConcluir, onCancel
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>
             O veículo será marcado como <b>Vendido</b> e, se houver troca, o veículo recebido entrará no estoque.
           </div>
-          <Btn variant="success" onClick={() => onConcluir({ processoId: processo.id, processo, veiculo })} disabled={saving}>
+          <div style={{ maxWidth: 220, margin: '0 auto 14px' }}>
+            <DateInput
+              label="DATA REAL DA VENDA"
+              value={dataVenda}
+              onChange={setDataVenda}
+              required
+            />
+          </div>
+          <Btn variant="success" onClick={() => onConcluir({ processoId: processo.id, processo, veiculo, dataVenda })} disabled={saving}>
             {saving ? 'Finalizando...' : '🏁 Concluir Venda'}
           </Btn>
         </div>

@@ -221,7 +221,8 @@ export async function deleteProcessoVenda(id) {
  * Conclui o processo: marca como concluído, muda veículo para "vendido",
  * cria registro de venda e, se houver troca, insere novo veículo no estoque.
  */
-export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
+export async function concluirProcessoVenda({ processoId, processo, veiculo, dataVenda }) {
+  const dataVendaFinal = dataVenda || new Date().toISOString().split('T')[0]
   // 1. Processo → concluido
   const { error: e1 } = await supabase
     .from('processos_venda')
@@ -235,7 +236,7 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
     .update({
       status:         'vendido',
       valor_venda:    processo.valor_venda,
-      data_venda:     new Date().toISOString().split('T')[0],
+      data_venda:     dataVendaFinal,
       comprador_nome: processo.comprador_nome,
       comprador_doc:  processo.comprador_doc || null,
       vendedor_nome:  processo.vendedor_nome || null,
@@ -267,7 +268,6 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
   }
 
   // 4. Cria/encontra cliente e registra em vendas_relacao (alimenta Pós-Venda)
-  const dataVenda = new Date().toISOString().split('T')[0]
   let clienteId = null
 
   if (processo.comprador_doc?.trim()) {
@@ -298,10 +298,10 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo }) {
   const { error: e5 } = await supabase.from('vendas_relacao').insert({
     veiculo_id:      veiculo.id,
     cliente_id:      clienteId,
-    data_venda:      dataVenda,
+    data_venda:      dataVendaFinal,
     valor_venda:     processo.valor_venda || 0,
     garantia_dias:   90,
-    garantia_inicio: dataVenda,
+    garantia_inicio: dataVendaFinal,
   })
   if (e5) throw e5
 }

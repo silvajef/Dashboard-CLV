@@ -159,6 +159,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           calc={calc}
           periodo={periodo}
           onClose={()=>setDrilldown(null)}
+          onNavegar={onVerProcesso}
         />
       )}
       {reportConfig && (
@@ -402,7 +403,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                 const cor=d<30?C.green:d<60?C.cyan:d<90?C.amber:C.red
                 const maxD=diasEstoque(calc.rankingDias[0]||v)+1
                 return(
-                  <div key={v.id} style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`}}>
+                  <div key={v.id}
+                    onClick={() => onVerProcesso?.(v.id)}
+                    onMouseEnter={e => e.currentTarget.style.background = C.borderHi}
+                    onMouseLeave={e => e.currentTarget.style.background = C.cardHi}
+                    style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`,cursor:'pointer'}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
                       <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                         <span style={{...mono,fontSize:11,color:C.muted}}>#{i+1}</span>
@@ -508,7 +513,9 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               <thead>
                 <tr>{['Modelo','Placa','Aquis.','Mnt.','Venda','Lucro','Margem','Dias'].map(h=>(
                   <th key={h} style={{fontSize:10,color:C.muted,fontWeight:700,letterSpacing:0.5,padding:'8px 10px',textAlign:['Modelo','Placa'].includes(h)?'left':'right',borderBottom:`1px solid ${C.border}`}}>{h}</th>
-                ))}</tr>
+                ))}
+                <th style={{width:24,borderBottom:`1px solid ${C.border}`}}/>
+              </tr>
               </thead>
               <tbody>
                 {calc.vendidos.map(v=>{
@@ -516,7 +523,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                   const mg=v.valor_venda>0?(lucro/v.valor_venda)*100:0
                   const cor=mg>=10?C.green:mg>=5?C.amber:C.red
                   return(
-                    <tr key={v.id} style={{borderBottom:`1px solid ${C.border}`}}>
+                    <tr key={v.id}
+                      onClick={() => onVerProcesso?.(v.id)}
+                      onMouseEnter={e => e.currentTarget.style.background = C.cardHi}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      style={{borderBottom:`1px solid ${C.border}`,cursor:'pointer'}}>
                       <td style={{padding:'9px 10px',fontWeight:700}}>{v.modelo}</td>
                       <td style={{padding:'9px 10px',color:C.muted,...mono}}>{v.placa}</td>
                       {[fmtR(v.valor_compra),fmtR(mnt),fmtR(v.valor_venda)].map((val,i)=>(
@@ -525,6 +536,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                       <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtR(lucro)}</td>
                       <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtPct(mg)}</td>
                       <td style={{padding:'9px 10px',textAlign:'right',...mono}}>{fmtDias(diasEstoque(v))}</td>
+                      <td style={{padding:'9px 8px',textAlign:'center',color:C.faint,fontSize:14}}>›</td>
                     </tr>
                   )
                 })}
@@ -557,7 +569,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               {calc.rankingCusto.map((v,i)=>{
                 const cor=v.pctCusto<3?C.green:v.pctCusto<(metas.custo_max_pct||5)?C.amber:C.red
                 return(
-                  <div key={v.id} style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`}}>
+                  <div key={v.id}
+                    onClick={() => onVerProcesso?.(v.id)}
+                    onMouseEnter={e => e.currentTarget.style.background = C.borderHi}
+                    onMouseLeave={e => e.currentTarget.style.background = C.cardHi}
+                    style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`,cursor:'pointer'}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
                       <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                         <span style={{...mono,fontSize:11,color:C.muted}}>#{i+1}</span>
@@ -756,7 +772,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                     : `FIPE ${Math.abs(v.gapFipeCompra).toFixed(1)}% abaixo do valor de compra`
 
                   return (
-                    <div key={v.id} style={{background:corDim,border:`1px solid ${cor}33`,borderRadius:12,padding:'14px 18px',marginBottom:10,borderLeft:`4px solid ${cor}`}}>
+                    <div key={v.id}
+                      onClick={() => onVerProcesso?.(v.id)}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                      style={{background:corDim,border:`1px solid ${cor}33`,borderRadius:12,padding:'14px 18px',marginBottom:10,borderLeft:`4px solid ${cor}`,cursor:'pointer'}}>
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
                         <div>
                           <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>
@@ -795,7 +815,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
 }
 
 /* ── DrilldownModal — detalhes dos cards da Visão Geral ─────────────────── */
-function DrilldownModal({ tipo, calc, periodo, onClose }) {
+function DrilldownModal({ tipo, calc, periodo, onClose, onNavegar }) {
   const periodoLabel = periodo === 'total' ? 'todo o período' : `últimos ${periodo} dias`
   const configs = {
     estoque: {
@@ -941,6 +961,7 @@ function DrilldownModal({ tipo, calc, periodo, onClose }) {
                 {cfg.colunas.map((h,i)=>(
                   <th key={h} style={{fontSize:10,color:C.muted,fontWeight:700,padding:'10px 12px',textAlign:i<2?'left':'right',borderBottom:`1px solid ${C.border}`,whiteSpace:'nowrap'}}>{h}</th>
                 ))}
+                <th style={{width:24,borderBottom:`1px solid ${C.border}`}}/>
               </tr>
             </thead>
             <tbody>
@@ -951,8 +972,13 @@ function DrilldownModal({ tipo, calc, periodo, onClose }) {
                     // Cor da última coluna numérica quando é lucro/margem
                     const isLucro = tipo === 'lucro'
                     const isReceita = tipo === 'receita'
+                    const bgBase = i%2===0?'transparent':C.card+'40'
                     return (
-                      <tr key={v.id||i} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?'transparent':C.card+'40'}}>
+                      <tr key={v.id||i}
+                        onClick={() => { onClose(); onNavegar?.(v.id) }}
+                        onMouseEnter={e => e.currentTarget.style.background = C.cardHi}
+                        onMouseLeave={e => e.currentTarget.style.background = bgBase}
+                        style={{borderBottom:`1px solid ${C.border}`,background:bgBase,cursor:'pointer'}}>
                         {cells.map((cell,ci)=>{
                           let color = C.text
                           if (isLucro && ci >= 6) {
@@ -969,6 +995,7 @@ function DrilldownModal({ tipo, calc, periodo, onClose }) {
                             </td>
                           )
                         })}
+                        <td style={{padding:'9px 8px',textAlign:'center',color:C.faint,fontSize:14}}>›</td>
                       </tr>
                     )
                   })
