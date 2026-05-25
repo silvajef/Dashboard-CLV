@@ -2,10 +2,38 @@ import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
 import Icon from '../components/Icon'
-import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, custoFixos, diasNoEstoque } from '../lib/constants'
+import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, custoFixos } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
-const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
+// Normaliza DD/MM/YYYY ou YYYY-MM-DD para YYYY-MM-DD (comparação segura)
+const normDate = str => {
+  if (!str) return null
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+    const [d, m, y] = str.split('/')
+    return `${y}-${m}-${d}`
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10)
+  return null
+}
+
+// Retorna MM/YYYY a partir de qualquer formato de data
+const mesAno = str => {
+  const iso = normDate(str)
+  if (!iso) return '??/????'
+  const [y, m] = iso.split('-')
+  return `${m}/${y}`
+}
+
+// Dias no estoque tolerante a ambos formatos
+const diasEstoque = v => {
+  const entIso = normDate(v.data_entrada)
+  const saiIso = v.data_venda ? normDate(v.data_venda) : null
+  if (!entIso) return 0
+  const entrada = new Date(entIso + 'T00:00:00')
+  const saida   = saiIso ? new Date(saiIso + 'T00:00:00') : new Date()
+  return Math.max(0, Math.floor((saida - entrada) / 86400000))
+}
+
 const mono = { fontFamily: "'JetBrains Mono',monospace" }
 
 // Shared theme object for LineTracker components — maps dark palette tokens
@@ -23,6 +51,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
   const [editMetas, setEdit]  = useState(false)
   const [saving, setSaving]   = useState(false)
   const [metasLocal, setMetasLocal] = useState(null)
+  const [drilldown, setDrilldown] = useState(null) // 'estoque' | 'manutencao' | 'receita' | 'lucro'
   const [reportConfig, setReportConfig] = useState(null)
   const [rpPeriodo, setRpPeriodo] = useState('30')
   const [rpInicio, setRpInicio]   = useState('')
@@ -37,10 +66,13 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const dias = parseInt(periodo)
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - dias)
-    // Comparação por string ISO (YYYY-MM-DD) evita desvio de timezone
     const cutoffISO = cutoff.toISOString().split('T')[0]
-    // Veículos ativos sempre incluídos; vendidos filtrados por data de venda
-    return veiculos.filter(v => v.status !== 'vendido' || (v.data_venda && v.data_venda >= cutoffISO))
+    // Normaliza data_venda para YYYY-MM-DD antes de comparar (aceita DD/MM/YYYY e YYYY-MM-DD)
+    return veiculos.filter(v => {
+      if (v.status !== 'vendido') return true
+      const dvISO = normDate(v.data_venda)
+      return dvISO && dvISO >= cutoffISO
+    })
   }, [veiculos, periodo])
 
   const calc = useMemo(() => {
@@ -49,12 +81,12 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const vendidos  = todos.filter(v => v.status === 'vendido')
     const hoje = new Date()
 
-    const diasAtivos   = ativos.map(v => diasNoEstoque(v))
-    const diasVend     = vendidos.map(v => diasNoEstoque(v))
+    const diasAtivos   = ativos.map(v => diasEstoque(v))
+    const diasVend     = vendidos.map(v => diasEstoque(v))
     const mediaDiasAti = diasAtivos.length   ? diasAtivos.reduce((a,b)=>a+b,0)/diasAtivos.length : 0
     const mediaDiasVend= diasVend.length     ? diasVend.reduce((a,b)=>a+b,0)/diasVend.length : 0
-    const parados60    = ativos.filter(v => diasNoEstoque(v) > 60)
-    const parados90    = ativos.filter(v => diasNoEstoque(v) > 90)
+    const parados60    = ativos.filter(v => diasEstoque(v) > 60)
+    const parados90    = ativos.filter(v => diasEstoque(v) > 90)
     const taxaGiro     = todos.length > 0 ? (vendidos.length/todos.length)*100 : 0
 
     const receita      = vendidos.reduce((s,v)=>s+(v.valor_venda||0),0)
@@ -79,7 +111,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       const lucroT = vv.reduce((s,v)=>{const c=custoV(v)+custoFixos(v);return s+(v.valor_venda||0)-(v.valor_compra||0)-c},0)
       const recT   = vv.reduce((s,v)=>s+(v.valor_venda||0),0)
       const margemT= recT>0?(lucroT/recT)*100:0
-      const diasT  = vt.map(v=>diasNoEstoque(v))
+      const diasT  = vt.map(v=>diasEstoque(v))
       const mediaDT= diasT.length?diasT.reduce((a,b)=>a+b,0)/diasT.length:0
       return { tipo, qtd:vt.length, vendidos:vv.length, lucro:lucroT, margem:margemT, mediaDias:mediaDT, custo:vt.reduce((s,v)=>s+custoV(v),0) }
     })
@@ -93,8 +125,8 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     })
     const mesesVenda = Object.values(mesesMap).sort((a,b)=>a.mes.localeCompare(b.mes))
 
-    const rankingCusto = ativos.map(v=>({...v,diasEstoque:diasNoEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
-    const rankingDias  = [...ativos].sort((a,b)=>diasNoEstoque(b)-diasNoEstoque(a))
+    const rankingCusto = ativos.map(v=>({...v,_dias:diasEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
+    const rankingDias  = [...ativos].sort((a,b)=>diasEstoque(b)-diasEstoque(a))
 
     return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, custoFxVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
   }, [vPeriodo])
@@ -121,6 +153,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
 
   return (
     <div>
+      {drilldown && (
+        <DrilldownModal
+          tipo={drilldown}
+          calc={calc}
+          periodo={periodo}
+          onClose={()=>setDrilldown(null)}
+        />
+      )}
       {reportConfig && (
         <ModalRelatorioPeriodo
           tipo={reportConfig.tipo}
@@ -256,15 +296,21 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           </div>
           <Grid cols={4} gap={12} style={{marginBottom:24}}>
             {[
-              {label:'Valor em Estoque',value:fmtR(calc.valorEstTotal),  color:C.blue,  sub:'custo de aquisição ativo'},
-              {label:'Custo Manutenção',value:fmtR(calc.custoMntAtivos), color:C.amber, sub:`índice: ${fmtPct(calc.indiceCusto)}`},
-              {label:'Receita Vendas',  value:fmtR(calc.receita),         color:C.green, sub:`${calc.vendidos.length} vend.`},
-              {label:'Lucro Líquido',   value:fmtR(calc.lucro),           color:calc.lucro>=0?C.green:C.red, sub:`margem: ${fmtPct(calc.margem)}`},
+              {label:'Valor em Estoque',value:fmtR(calc.valorEstTotal),  color:C.blue,  sub:'custo de aquisição ativo', key:'estoque'  },
+              {label:'Custo Manutenção',value:fmtR(calc.custoMntAtivos), color:C.amber, sub:`índice: ${fmtPct(calc.indiceCusto)}`, key:'manutencao'},
+              {label:'Receita Vendas',  value:fmtR(calc.receita),        color:C.green, sub:`${calc.vendidos.length} vend.`,        key:'receita'   },
+              {label:'Lucro Líquido',   value:fmtR(calc.lucro),          color:calc.lucro>=0?C.green:C.red, sub:`margem: ${fmtPct(calc.margem)}`, key:'lucro'},
             ].map(k=>(
-              <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderLeft:`3px solid ${k.color}`}}>
+              <div key={k.label} onClick={()=>setDrilldown(k.key)}
+                style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:'16px 18px',borderLeft:`3px solid ${k.color}`,cursor:'pointer',transition:'border-color .15s,box-shadow .15s'}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=k.color;e.currentTarget.style.boxShadow=`0 0 0 1px ${k.color}44`}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow='none';e.currentTarget.style.borderLeftColor=k.color}}>
                 <div style={{fontSize:10,color:C.muted,fontWeight:700,letterSpacing:0.5,marginBottom:8}}>{k.label}</div>
                 <div style={{...mono,fontSize:18,fontWeight:700,color:k.color}}>{k.value}</div>
-                <div style={{fontSize:11,color:C.muted,marginTop:6}}>{k.sub}</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:6}}>
+                  <span style={{fontSize:11,color:C.muted}}>{k.sub}</span>
+                  <span style={{fontSize:10,color:k.color,fontWeight:700,background:`${k.color}18`,padding:'2px 8px',borderRadius:20}}>ver detalhes ›</span>
+                </div>
               </div>
             ))}
           </Grid>
@@ -352,9 +398,9 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
             <Card>
               <SectionHead title="🏆 Mais Tempo em Estoque"/>
               {calc.rankingDias.map((v,i)=>{
-                const d=diasNoEstoque(v)
+                const d=diasEstoque(v)
                 const cor=d<30?C.green:d<60?C.cyan:d<90?C.amber:C.red
-                const maxD=diasNoEstoque(calc.rankingDias[0]||v)+1
+                const maxD=diasEstoque(calc.rankingDias[0]||v)+1
                 return(
                   <div key={v.id} style={{background:C.cardHi,borderRadius:9,padding:'11px 14px',marginBottom:6,borderLeft:`3px solid ${cor}`}}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
@@ -375,7 +421,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
             <Card>
               <SectionHead title="Distribuição por Faixa"/>
               {[{label:'0–30 dias',min:0,max:30,color:C.green},{label:'31–60 dias',min:31,max:60,color:C.cyan},{label:'61–90 dias',min:61,max:90,color:C.amber},{label:'> 90 dias',min:91,max:9999,color:C.red}].map(f=>{
-                const qtd=calc.ativos.filter(v=>{const d=diasNoEstoque(v);return d>=f.min&&d<=f.max}).length
+                const qtd=calc.ativos.filter(v=>{const d=diasEstoque(v);return d>=f.min&&d<=f.max}).length
                 const pct=calc.ativos.length>0?(qtd/calc.ativos.length)*100:0
                 return(
                   <div key={f.label} style={{marginBottom:16}}>
@@ -478,7 +524,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                       ))}
                       <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtR(lucro)}</td>
                       <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtPct(mg)}</td>
-                      <td style={{padding:'9px 10px',textAlign:'right',...mono}}>{fmtDias(diasNoEstoque(v))}</td>
+                      <td style={{padding:'9px 10px',textAlign:'right',...mono}}>{fmtDias(diasEstoque(v))}</td>
                     </tr>
                   )
                 })}
@@ -744,6 +790,199 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
           </div>
         )
       })()}
+    </div>
+  )
+}
+
+/* ── DrilldownModal — detalhes dos cards da Visão Geral ─────────────────── */
+function DrilldownModal({ tipo, calc, periodo, onClose }) {
+  const periodoLabel = periodo === 'total' ? 'todo o período' : `últimos ${periodo} dias`
+  const configs = {
+    estoque: {
+      titulo:  'Valor em Estoque',
+      icon:    '📦',
+      color:   C.blue,
+      lista:   [...calc.ativos].sort((a,b)=>(b.valor_compra||0)-(a.valor_compra||0)),
+      colunas: ['Veículo','Placa','Status','Valor Compra','Manutenção','Custo Total'],
+      row: v => {
+        const mnt = custoV(v); const fx = custoFixos(v)
+        return [
+          `${v.marca_nome||''} ${v.modelo_nome||v.modelo||''}`.trim()||'—',
+          v.placa||'—',
+          v.status,
+          fmtR(v.valor_compra||0),
+          fmtR(mnt),
+          fmtR((v.valor_compra||0)+mnt+fx),
+        ]
+      },
+      totais: [
+        ['Veículos',          `${calc.ativos.length}u`,              C.text ],
+        ['Custo Aquisição',   fmtR(calc.valorEstTotal),              C.blue ],
+        ['Custo Manutenção',  fmtR(calc.custoMntAtivos),             C.amber],
+      ],
+    },
+    manutencao: {
+      titulo:  'Custo de Manutenção',
+      icon:    '🔧',
+      color:   C.amber,
+      lista:   [...calc.ativos].sort((a,b)=>custoV(b)-custoV(a)),
+      colunas: ['Veículo','Placa','Peças','Mão Obra','Outros','Total Mnt.'],
+      row: v => {
+        const pecas=(v.servicos||[]).reduce((s,m)=>s+(m.custo_pecas||0),0)
+        const mao  =(v.servicos||[]).reduce((s,m)=>s+(m.custo_mao||0),0)
+        const out  =(v.servicos||[]).reduce((s,m)=>s+(m.outros||0),0)
+        return [
+          `${v.marca_nome||''} ${v.modelo_nome||v.modelo||''}`.trim()||'—',
+          v.placa||'—',
+          fmtR(pecas), fmtR(mao), fmtR(out), fmtR(pecas+mao+out),
+        ]
+      },
+      totais: [
+        ['Veículos',       `${calc.ativos.length}u`,      C.text ],
+        ['Total Manutenção', fmtR(calc.custoMntAtivos),   C.amber],
+        ['Índice %',         `${calc.indiceCusto.toFixed(1)}%`, C.cyan],
+      ],
+    },
+    receita: {
+      titulo:  'Receita de Vendas',
+      icon:    '💰',
+      color:   C.green,
+      lista:   [...calc.vendidos].sort((a,b)=>{
+        const ia = normDate(a.data_venda)||''; const ib = normDate(b.data_venda)||''
+        return ib.localeCompare(ia)
+      }),
+      colunas: ['Veículo','Placa','Data Venda','Comprador','Valor Venda','Custo Total','Lucro'],
+      row: v => {
+        const mnt=custoV(v); const fx=custoFixos(v)
+        const ct=(v.valor_compra||0)+mnt+fx
+        const luc=(v.valor_venda||0)-ct
+        const dvISO = normDate(v.data_venda)
+        const dvDisplay = dvISO ? dvISO.split('-').reverse().join('/') : (v.data_venda||'—')
+        return [
+          `${v.marca_nome||''} ${v.modelo_nome||v.modelo||''}`.trim()||'—',
+          v.placa||'—',
+          dvDisplay,
+          v.comprador_nome||'—',
+          fmtR(v.valor_venda||0),
+          fmtR(ct),
+          fmtR(luc),
+        ]
+      },
+      totais: [
+        ['Vendas',         `${calc.vendidos.length}u`,   C.text  ],
+        ['Receita Total',  fmtR(calc.receita),           C.green ],
+        ['Ticket Médio',   fmtR(calc.ticketMedio),       C.cyan  ],
+      ],
+    },
+    lucro: {
+      titulo:  'Lucro Líquido',
+      icon:    '📈',
+      color:   calc.lucro >= 0 ? C.green : C.red,
+      lista:   [...calc.vendidos].sort((a,b)=>{
+        const la=(a.valor_venda||0)-(a.valor_compra||0)-custoV(a)-custoFixos(a)
+        const lb=(b.valor_venda||0)-(b.valor_compra||0)-custoV(b)-custoFixos(b)
+        return lb-la
+      }),
+      colunas: ['Veículo','Placa','Receita','Custo Aquis.','Manutenção','Fixos','Lucro','Margem'],
+      row: v => {
+        const mnt=custoV(v); const fx=custoFixos(v)
+        const luc=(v.valor_venda||0)-(v.valor_compra||0)-mnt-fx
+        const mg=v.valor_venda>0?(luc/v.valor_venda)*100:0
+        return [
+          `${v.marca_nome||''} ${v.modelo_nome||v.modelo||''}`.trim()||'—',
+          v.placa||'—',
+          fmtR(v.valor_venda||0),
+          fmtR(v.valor_compra||0),
+          fmtR(mnt),
+          fmtR(fx),
+          fmtR(luc),
+          `${mg.toFixed(1)}%`,
+        ]
+      },
+      totais: [
+        ['Receita',     fmtR(calc.receita),                         C.blue  ],
+        ['Lucro Total', fmtR(calc.lucro),                           calc.lucro>=0?C.green:C.red],
+        ['Margem',      `${calc.margem.toFixed(1)}%`,               C.cyan  ],
+      ],
+    },
+  }
+
+  const cfg = configs[tipo]
+  if (!cfg) return null
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'#000a',zIndex:2000,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'40px 16px',overflowY:'auto'}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,width:'100%',maxWidth:960,flexShrink:0}}>
+        {/* Header */}
+        <div style={{padding:'20px 24px',borderBottom:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:800,color:C.text}}>{cfg.icon} {cfg.titulo}</div>
+            <div style={{fontSize:12,color:C.muted,marginTop:4}}>Período: {periodoLabel} · {cfg.lista.length} registros</div>
+          </div>
+          <button onClick={onClose} style={{background:'transparent',border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,cursor:'pointer',fontSize:18,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        </div>
+
+        {/* Totalizadores */}
+        <div style={{display:'grid',gridTemplateColumns:`repeat(${cfg.totais.length},1fr)`,gap:1,background:C.border}}>
+          {cfg.totais.map(([l,v,c])=>(
+            <div key={l} style={{background:C.card,padding:'14px 20px'}}>
+              <div style={{fontSize:10,color:C.muted,fontWeight:700,marginBottom:4}}>{l}</div>
+              <div style={{...mono,fontSize:18,fontWeight:800,color:c}}>{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabela */}
+        <div style={{overflowX:'auto',maxHeight:'60vh',overflowY:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+            <thead style={{position:'sticky',top:0,background:C.surface,zIndex:1}}>
+              <tr>
+                {cfg.colunas.map((h,i)=>(
+                  <th key={h} style={{fontSize:10,color:C.muted,fontWeight:700,padding:'10px 12px',textAlign:i<2?'left':'right',borderBottom:`1px solid ${C.border}`,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cfg.lista.length === 0
+                ? <tr><td colSpan={cfg.colunas.length} style={{textAlign:'center',color:C.muted,padding:40}}>Nenhum registro no período.</td></tr>
+                : cfg.lista.map((v,i)=>{
+                    const cells = cfg.row(v)
+                    // Cor da última coluna numérica quando é lucro/margem
+                    const isLucro = tipo === 'lucro'
+                    const isReceita = tipo === 'receita'
+                    return (
+                      <tr key={v.id||i} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?'transparent':C.card+'40'}}>
+                        {cells.map((cell,ci)=>{
+                          let color = C.text
+                          if (isLucro && ci >= 6) {
+                            const raw = parseFloat(String(cell).replace(/[^0-9,.-]/g,'').replace(',','.'))
+                            color = !isNaN(raw) && raw < 0 ? C.red : C.green
+                          }
+                          if (isReceita && ci === 6) {
+                            const raw = parseFloat(String(cell).replace(/[^0-9,.-]/g,'').replace(',','.'))
+                            color = !isNaN(raw) && raw < 0 ? C.red : C.green
+                          }
+                          return (
+                            <td key={ci} style={{padding:'9px 12px',textAlign:ci<2?'left':'right',...(ci>=2?mono:{}),fontWeight:ci>=2?600:400,color,whiteSpace:'nowrap'}}>
+                              {cell}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{padding:'12px 24px',borderTop:`1px solid ${C.border}`,textAlign:'right'}}>
+          <button onClick={onClose} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,cursor:'pointer',fontSize:13,fontWeight:700,padding:'8px 20px',fontFamily:"'Syne',sans-serif"}}>
+            Fechar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
