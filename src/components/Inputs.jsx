@@ -25,7 +25,7 @@ function FieldWrap({ label, required, children, style }) {
 }
 
 /* ── MoedaInput ───────────────────────────────────────────────── */
-export function MoedaInput({ label, value, onChange, required, style, placeholder, highlight }) {
+export function MoedaInput({ label, value, onChange, required, style, placeholder, highlight, disabled }) {
   const toDisplay = (num) => {
     if (!num && num !== 0) return ''
     const cents = Math.round(Number(num) * 100)
@@ -34,13 +34,14 @@ export function MoedaInput({ label, value, onChange, required, style, placeholde
   }
 
   const handleChange = (e) => {
+    if (disabled) return
     const digits = e.target.value.replace(/\D/g, '')
     if (!digits) { onChange(0); return }
     const num = parseInt(digits, 10) / 100
     onChange(num)
   }
 
-  const color = highlight || C.amber
+  const color = disabled ? C.muted : (highlight || C.amber)
 
   return (
     <FieldWrap label={label} required={required} style={style}>
@@ -51,8 +52,9 @@ export function MoedaInput({ label, value, onChange, required, style, placeholde
           inputMode="numeric"
           value={toDisplay(value)}
           onChange={handleChange}
+          disabled={disabled}
           placeholder={placeholder || '0,00'}
-          style={{ ...baseStyle, paddingLeft:34, fontFamily:"'JetBrains Mono',monospace", fontWeight:700, fontSize:15, color, border:`1px solid ${color}66` }}
+          style={{ ...baseStyle, paddingLeft:34, fontFamily:"'JetBrains Mono',monospace", fontWeight:700, fontSize:15, color, border:`1px solid ${color}66`, opacity: disabled ? 0.45 : 1, cursor: disabled ? 'not-allowed' : 'text' }}
         />
       </div>
     </FieldWrap>

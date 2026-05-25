@@ -9,7 +9,7 @@ export const TIPOS_VEICULO = [
 export const TIPOS_MANUT = [
   'Mecânica', 'Elétrica', 'Funilaria', 'Pintura', 'Pneus',
   'Suspensão', 'Freios', 'Revisão Geral', 'Limpeza/Detailing',
-  'Ar-condicionado', 'Documentação', 'Outro'
+  'Ar-condicionado', 'Documentação', 'Peças', 'Outro'
 ]
 export const COMBUSTIVEIS = ['Diesel','Flex','Gasolina','Etanol','GNV','Elétrico','Híbrido']
 

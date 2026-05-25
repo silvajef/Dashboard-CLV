@@ -267,7 +267,7 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
 
       {/* ── FORNECEDOR ── */}
       <div style={{ background:C.surface, border:`1px solid ${C.blue}33`, borderRadius:12, padding:16, marginBottom:16 }}>
-        <div style={{ fontSize:11, color:C.blue, fontWeight:700, letterSpacing:1, marginBottom:12 }}>👤 FORNECEDOR (QUEM VENDEU PARA NÓS)</div>
+        <div style={{ fontSize:11, color:C.blue, fontWeight:700, letterSpacing:1, marginBottom:12 }}>👤 FORNECEDOR</div>
         <div style={{ display:'grid', gridTemplateColumns:cols2, gap:14 }}>
           <UpperInput label="Nome do Fornecedor" value={f.fornecedor_nome} onChange={v=>setUp('fornecedor_nome',v)} placeholder="PESSOA FÍSICA OU JURÍDICA"/>
           <DocInput   label="CPF / CNPJ"         value={f.fornecedor_doc}  onChange={v=>set('fornecedor_doc',v)}/>
@@ -428,11 +428,16 @@ export function ModalVender({ data, onSave, onClose, loading }) {
 }
 
 /* ── ModalServico ─────────────────────────────────────────────── */
+// Formata moeda mostrando centavos reais sem arredondamento
+const fmtRReal = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2})
+
 export function ModalServico({ data, veiculoId, prestadores, onSave, onClose, loading }) {
   const { isMobile } = useBreakpoint()
   const [f, setF] = useState(data||{ veiculo_id:veiculoId, tipo:'', descricao:'', data_servico:today(), prestador_id:'', custo_pecas:0, custo_mao:0, outros:0, status:'pendente', garantia:'', obs:'' })
   const set   = (k,v) => setF(p=>({...p,[k]:v}))
-  const total = (Number(f.custo_pecas)||0)+(Number(f.custo_mao)||0)+(Number(f.outros)||0)
+  // Quando tipo='Peças', apenas custo_pecas é habilitado
+  const soPecas = f.tipo === 'Peças'
+  const total = (Number(f.custo_pecas)||0) + (soPecas ? 0 : (Number(f.custo_mao)||0)+(Number(f.outros)||0))
   const cols3 = isMobile?'1fr':'1fr 1fr 1fr'
   const cols2 = isMobile?'1fr':'1fr 1fr'
   return (
@@ -448,16 +453,21 @@ export function ModalServico({ data, veiculoId, prestadores, onSave, onClose, lo
           style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:'inherit', resize:'vertical', textTransform:'uppercase' }}/>
       </div>
       <SelectInput label="Prestador / Oficina" value={f.prestador_id} onChange={v=>set('prestador_id',Number(v)||null)} options={prestadores.map(p=>({value:p.id,label:p.nome}))}/>
+      {soPecas && (
+        <div style={{ marginTop:10, background:`${C.blue}12`, border:`1px solid ${C.blue}33`, borderRadius:8, padding:'8px 12px', fontSize:11, color:C.blue }}>
+          ℹ️ Tipo <strong>Peças</strong>: apenas o campo Custo de Peças é habilitado.
+        </div>
+      )}
       <div style={{ display:'grid', gridTemplateColumns:cols3, gap:14, marginTop:14 }}>
         <MoedaInput label="Custo Peças (R$)" value={f.custo_pecas} onChange={v=>set('custo_pecas',v)}/>
-        <MoedaInput label="Mão de Obra (R$)" value={f.custo_mao}   onChange={v=>set('custo_mao',v)}/>
-        <MoedaInput label="Outros (R$)"      value={f.outros}      onChange={v=>set('outros',v)}/>
+        <MoedaInput label="Mão de Obra (R$)" value={soPecas ? 0 : f.custo_mao} onChange={v=>set('custo_mao',v)} disabled={soPecas}/>
+        <MoedaInput label="Outros (R$)"      value={soPecas ? 0 : f.outros}    onChange={v=>set('outros',v)}    disabled={soPecas}/>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:cols2, gap:14, marginTop:14 }}>
         <UpperInput label="Garantia" value={f.garantia} onChange={v=>set('garantia',(v||'').toUpperCase())} placeholder="EX: 6 MESES"/>
         <div style={{ background:'#f59e0b18', border:'1px solid #f59e0b33', borderRadius:8, padding:'10px 14px', display:'flex', flexDirection:'column', justifyContent:'center' }}>
           <div style={{ fontSize:11, color:C.muted, fontWeight:700, marginBottom:4 }}>CUSTO TOTAL</div>
-          <div style={{ fontSize:22, fontWeight:800, color:C.amber, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(total)}</div>
+          <div style={{ fontSize:22, fontWeight:800, color:C.amber, fontFamily:"'JetBrains Mono',monospace" }}>{fmtRReal(total)}</div>
         </div>
       </div>
       <div style={{ marginTop:14, marginBottom:20 }}>
@@ -467,7 +477,7 @@ export function ModalServico({ data, veiculoId, prestadores, onSave, onClose, lo
       </div>
       <div style={{ display:'flex', gap:10 }}>
         <Btn variant="secondary" style={{ flex:1 }} onClick={onClose}>Cancelar</Btn>
-        <Btn style={{ flex:1 }} onClick={()=>onSave({...f,id:data?.id,custo_pecas:Number(f.custo_pecas)||0,custo_mao:Number(f.custo_mao)||0,outros:Number(f.outros)||0,prestador_id:f.prestador_id||null})} disabled={loading}>
+        <Btn style={{ flex:1 }} onClick={()=>onSave({...f,id:data?.id,custo_pecas:Number(f.custo_pecas)||0,custo_mao:soPecas?0:Number(f.custo_mao)||0,outros:soPecas?0:Number(f.outros)||0,prestador_id:f.prestador_id||null})} disabled={loading}>
           {loading?'Salvando...':data?'Salvar':'Registrar Serviço'}
         </Btn>
       </div>

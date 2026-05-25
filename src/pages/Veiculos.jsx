@@ -370,6 +370,27 @@ export default function Veiculos({
                   <Btn onClick={()=>setModal({type:'servico',data:null})}>+ Registrar Serviço</Btn>
                 </div>
               )}
+              {(vAtual.servicos?.length > 0) && (() => {
+                const totalPecas = (vAtual.servicos||[]).reduce((s,m)=>s+(m.custo_pecas||0),0)
+                const totalMao   = (vAtual.servicos||[]).reduce((s,m)=>s+(m.custo_mao||0),0)
+                const totalOutros = (vAtual.servicos||[]).reduce((s,m)=>s+(m.outros||0),0)
+                const totalGeral = totalPecas + totalMao + totalOutros
+                return (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:10, marginBottom:16 }}>
+                    {[
+                      ['Total Peças',    totalPecas,  C.blue],
+                      ['Total Mão Obra', totalMao,    C.green],
+                      ['Total Outros',   totalOutros, C.cyan],
+                      ['TOTAL GERAL',    totalGeral,  C.amber],
+                    ].map(([l,val,cor])=>(
+                      <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:'12px 14px', borderTop:`3px solid ${cor}` }}>
+                        <div style={{ fontSize:10, color:C.muted, fontWeight:700, marginBottom:4 }}>{l}</div>
+                        <div style={{ fontSize:16, fontWeight:800, color:cor, fontFamily:"'JetBrains Mono',monospace" }}>{fmtR(val)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
               {!(vAtual.servicos?.length)
                 ? <div style={{ textAlign:'center', color:C.muted, padding:50 }}>Nenhum serviço registrado.</div>
                 : (vAtual.servicos||[]).map(s => {

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
 import Icon from '../components/Icon'
-import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, diasNoEstoque } from '../lib/constants'
+import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, custoFixos, diasNoEstoque } from '../lib/constants'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
 const mesAno = iso => { const d = new Date(iso); return `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` }
@@ -37,8 +37,10 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const dias = parseInt(periodo)
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - dias)
+    // Comparação por string ISO (YYYY-MM-DD) evita desvio de timezone
+    const cutoffISO = cutoff.toISOString().split('T')[0]
     // Veículos ativos sempre incluídos; vendidos filtrados por data de venda
-    return veiculos.filter(v => v.status !== 'vendido' || (v.data_venda && new Date(v.data_venda) >= cutoff))
+    return veiculos.filter(v => v.status !== 'vendido' || (v.data_venda && v.data_venda >= cutoffISO))
   }, [veiculos, periodo])
 
   const calc = useMemo(() => {
@@ -58,7 +60,8 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const receita      = vendidos.reduce((s,v)=>s+(v.valor_venda||0),0)
     const custoAquis   = vendidos.reduce((s,v)=>s+(v.valor_compra||0),0)
     const custoMntVend = vendidos.reduce((s,v)=>s+custoV(v),0)
-    const lucro        = receita - custoAquis - custoMntVend
+    const custoFxVend  = vendidos.reduce((s,v)=>s+custoFixos(v),0)
+    const lucro        = receita - custoAquis - custoMntVend - custoFxVend
     const margem       = receita > 0 ? (lucro/receita)*100 : 0
     const ticketMedio  = vendidos.length > 0 ? receita/vendidos.length : 0
     const roi          = custoAquis > 0 ? (lucro/custoAquis)*100 : 0
@@ -73,7 +76,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const porTipo = tipos.map(tipo => {
       const vt = todos.filter(v=>v.tipo===tipo)
       const vv = vt.filter(v=>v.status==='vendido')
-      const lucroT = vv.reduce((s,v)=>{const c=custoV(v);return s+(v.valor_venda||0)-(v.valor_compra||0)-c},0)
+      const lucroT = vv.reduce((s,v)=>{const c=custoV(v)+custoFixos(v);return s+(v.valor_venda||0)-(v.valor_compra||0)-c},0)
       const recT   = vv.reduce((s,v)=>s+(v.valor_venda||0),0)
       const margemT= recT>0?(lucroT/recT)*100:0
       const diasT  = vt.map(v=>diasNoEstoque(v))
@@ -86,14 +89,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       const m = mesAno(v.data_venda)
       if (!mesesMap[m]) mesesMap[m]={mes:m,qtd:0,receita:0,lucro:0}
       mesesMap[m].qtd++; mesesMap[m].receita+=v.valor_venda||0
-      mesesMap[m].lucro+=(v.valor_venda||0)-(v.valor_compra||0)-custoV(v)
+      mesesMap[m].lucro+=(v.valor_venda||0)-(v.valor_compra||0)-custoV(v)-custoFixos(v)
     })
     const mesesVenda = Object.values(mesesMap).sort((a,b)=>a.mes.localeCompare(b.mes))
 
     const rankingCusto = ativos.map(v=>({...v,diasEstoque:diasNoEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
     const rankingDias  = [...ativos].sort((a,b)=>diasNoEstoque(b)-diasNoEstoque(a))
 
-    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
+    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, custoFxVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
   }, [vPeriodo])
 
   const mesAtual = useMemo(()=>{
@@ -392,11 +395,12 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       {/* ── RENTABILIDADE ── */}
       {secao==='rentabilidade' && (
         <div>
-          <Grid cols={5} gap={12} style={{marginBottom:24}}>
+          <Grid cols={3} gap={12} style={{marginBottom:24}}>
             {[
               {label:'Receita Total',   value:fmtR(calc.receita),       color:C.blue},
               {label:'Custo Aquisição', value:fmtR(calc.custoAquis),    color:C.muted},
               {label:'Custo Manutenção',value:fmtR(calc.custoMntVend),  color:C.amber},
+              {label:'Custos Fixos',    value:fmtR(calc.custoFxVend),   color:C.orange},
               {label:'Lucro Líquido',   value:fmtR(calc.lucro),         color:calc.lucro>=0?C.green:C.red},
               {label:'Margem Bruta',    value:fmtPct(calc.margem),      color:calc.margem>=(metas.margem_min||8)?C.green:C.red},
             ].map(k=>(
@@ -410,10 +414,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
             <Card>
               <SectionHead title="Composição do Resultado"/>
               {[
-                {label:'Receita',          value:calc.receita,      positive:true,  color:C.green},
-                {label:'(-) Custo Aquis.', value:-calc.custoAquis,  positive:false, color:C.red},
-                {label:'(-) Custo Mnt.',   value:-calc.custoMntVend,positive:false, color:C.amber},
-                {label:'= Lucro',          value:calc.lucro,        positive:calc.lucro>=0, color:calc.lucro>=0?C.cyan:C.red, bold:true},
+                {label:'Receita',            value:calc.receita,      positive:true,  color:C.green},
+                {label:'(-) Custo Aquis.',   value:-calc.custoAquis,  positive:false, color:C.red},
+                {label:'(-) Custo Mnt.',     value:-calc.custoMntVend,positive:false, color:C.amber},
+                ...(calc.custoFxVend > 0 ? [{label:'(-) Custos Fixos', value:-calc.custoFxVend, positive:false, color:C.orange}] : []),
+                {label:'= Lucro',            value:calc.lucro,        positive:calc.lucro>=0, color:calc.lucro>=0?C.cyan:C.red, bold:true},
               ].map((r,i)=>(
                 <div key={r.label} style={{marginBottom:12}}>
                   <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
@@ -461,7 +466,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               </thead>
               <tbody>
                 {calc.vendidos.map(v=>{
-                  const mnt=custoV(v); const lucro=(v.valor_venda||0)-(v.valor_compra||0)-mnt
+                  const mnt=custoV(v); const fx=custoFixos(v); const lucro=(v.valor_venda||0)-(v.valor_compra||0)-mnt-fx
                   const mg=v.valor_venda>0?(lucro/v.valor_venda)*100:0
                   const cor=mg>=10?C.green:mg>=5?C.amber:C.red
                   return(
