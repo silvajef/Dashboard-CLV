@@ -20,7 +20,8 @@ import Usuarios      from './pages/Usuarios'
 import Anuncios      from './pages/Anuncios'
 import Leads         from './pages/Leads'
 import Financeiro    from './pages/Financeiro'
-import Configuracoes from './pages/Configuracoes'
+import Configuracoes   from './pages/Configuracoes'
+import PainelVendedor  from './pages/PainelVendedor'
 
 const TABS_BASE = [
   { id:'dashboard',   icon:'dashboard',  label:'KPIs'        },
@@ -31,6 +32,7 @@ const TABS_BASE = [
   { id:'prestadores', icon:'tools',      label:'Prestadores'  },
   { id:'historico',   icon:'list',       label:'Histórico'    },
   { id:'financeiro',  icon:'coins',      label:'Financeiro'   },
+  { id:'vendedor',    icon:'users',      label:'Vendedor'     },
 ]
 
 const TAB_USUARIOS      = { id:'usuarios',      icon:'users',    label:'Usuários'      }
@@ -196,6 +198,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
         {abaAtual==='financeiro'    && <Financeiro   veiculos={fleet.veiculos} metas={fleet.metas}/>}
+        {abaAtual==='vendedor'      && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
         {abaAtual==='configuracoes' && <Configuracoes />}
         </div>

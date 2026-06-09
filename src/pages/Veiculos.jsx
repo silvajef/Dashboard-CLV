@@ -51,6 +51,19 @@ function DepreciacaoRow({ v }) {
   )
 }
 
+/** Badge no card da listagem quando o veículo foi recebido em troca. */
+function BadgeTroca({ v }) {
+  if (!v.obs?.startsWith('RECEBIDO EM TROCA')) return null
+  return (
+    <div style={{ marginTop:4, display:'flex', alignItems:'center' }}>
+      <span style={{ fontSize:9, fontWeight:700, color:C.orange, background:`${C.orange}18`,
+                      padding:'2px 8px', borderRadius:3, fontFamily:russo, letterSpacing:'0.06em' }}>
+        🔄 TROCA
+      </span>
+    </div>
+  )
+}
+
 /** Badge no card da listagem quando o preço anunciado está abaixo do custo total. */
 function BadgeAbaixoCusto({ v }) {
   if (!['pronto', 'em_venda'].includes(v.status)) return null
@@ -84,7 +97,8 @@ export default function Veiculos({
   const [modal,  setModal]  = useState(null)
   const [saving, setSaving] = useState(false)
   const [erro,   setErro]   = useState(null)
-  const [filtro, setFiltro] = useState({ status:'todos', busca:'' })
+  const [filtro,      setFiltro]      = useState({ status:'todos', busca:'' })
+  const [filtroTroca, setFiltroTroca] = useState(false)
   const buscaRef = useRef(null)
 
   useEffect(() => {
@@ -108,9 +122,12 @@ export default function Veiculos({
     else setTimeout(focus, 0)
   }, [focusBusca])
 
-  const ativos    = veiculos.filter(v => v.status !== 'vendido')
-  const filtrados = ativos.filter(v => {
+  const ativos     = veiculos.filter(v => v.status !== 'vendido')
+  const isTroca    = v => Boolean(v.obs?.startsWith('RECEBIDO EM TROCA'))
+  const countTroca = ativos.filter(isTroca).length
+  const filtrados  = ativos.filter(v => {
     if (filtro.status !== 'todos' && v.status !== filtro.status) return false
+    if (filtroTroca && !isTroca(v)) return false
     if (filtro.busca) {
       const b = filtro.busca.toLowerCase()
       return (
@@ -603,6 +620,22 @@ export default function Veiculos({
               </button>
             )
           })}
+          {countTroca > 0 && (
+            <button className="veic-pill" onClick={() => setFiltroTroca(p => !p)}
+              style={{
+                background: filtroTroca ? `${C.orange}1c` : 'transparent',
+                border: `1px solid ${filtroTroca ? C.orange+'55' : C.border}`,
+                color: filtroTroca ? C.orange : C.faint,
+                borderRadius:4, padding:'5px 10px', fontSize:9,
+                fontFamily:russo, letterSpacing:'0.08em', cursor:'pointer',
+                display:'inline-flex', alignItems:'center', gap:6,
+              }}>
+              🔄 TROCA
+              <span style={{ background: filtroTroca ? C.orange : C.subtle, color: filtroTroca ? '#08090d' : C.muted, borderRadius:10, padding:'1px 6px', fontSize:9, fontFamily:chakra }}>
+                {countTroca}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -704,6 +737,7 @@ export default function Veiculos({
 
                 <DepreciacaoRow v={v}/>
                 <BadgeAbaixoCusto v={v}/>
+                <BadgeTroca v={v}/>
               </div>
 
               {/* Right indicator */}

@@ -72,6 +72,10 @@ function SecaoTroca({ f, set, setUp, isMobile }) {
     const val = parseFipeValor(fipe.preco.Valor)
     set('troca_valor_fipe',  val)
     set('troca_valor',       val)
+    // ano FIPE inclui combustível no nome, e.g. "2020 Flex" — preenche automaticamente
+    const anoStr = (fipe.sels.anoNome || '').toLowerCase()
+    const comb = COMBUSTIVEIS.find(c => anoStr.includes(c.value.toLowerCase()))
+    if (comb) set('troca_combustivel', comb.value)
   }, [fipe.preco])
 
   return (
