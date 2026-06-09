@@ -260,9 +260,13 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo, dat
       combustivel:  processo.troca_combustivel || null,
       codigo_fipe:  processo.troca_codigo_fipe || null,
       valor_fipe:   processo.troca_valor_fipe  || null,
-      status:       'pendente',
-      data_entrada: new Date().toISOString().split('T')[0],
-      obs:          `RECEBIDO EM TROCA — PROC. #${processoId}`,
+      status:          'pendente',
+      data_entrada:    new Date().toISOString().split('T')[0],
+      obs:             `RECEBIDO EM TROCA — PROC. #${processoId}`,
+      fornecedor_nome:     processo.comprador_nome     || null,
+      fornecedor_telefone: processo.comprador_telefone || null,
+      fornecedor_doc:      processo.comprador_doc      || null,
+      fornecedor_tipo:     'troca',
     })
     if (e3) throw e3
   }

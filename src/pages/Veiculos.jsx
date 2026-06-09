@@ -392,6 +392,24 @@ export default function Veiculos({
 
                 <FipeHistoricoChart historico={vAtual.fipe_historico} valorEntrada={vAtual.valor_compra}/>
 
+                {vAtual.fornecedor_nome && (
+                  <div style={{ marginBottom:16, background:`${C.blue}09`, border:`1px solid ${C.blue}28`, borderRadius:8, padding:14 }}>
+                    <div style={{ fontFamily:russo, fontSize:10, letterSpacing:'0.1em', color:C.blue, marginBottom:8 }}>DADOS DO VENDEDOR</div>
+                    {[
+                      ['Tipo',      { pessoa_fisica:'Pessoa Física', pessoa_juridica:'Pessoa Jurídica', leilao:'Leilão', troca:'Troca' }[vAtual.fornecedor_tipo] || vAtual.fornecedor_tipo],
+                      ['Nome',      vAtual.fornecedor_nome],
+                      ['Telefone',  vAtual.fornecedor_telefone],
+                      ['CPF/CNPJ',  vAtual.fornecedor_doc],
+                      ['E-mail',    vAtual.fornecedor_email],
+                    ].filter(([,val]) => val).map(([k, val]) => (
+                      <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'4px 0', borderBottom:`1px solid ${C.border}` }}>
+                        <span style={{ color:C.muted }}>{k}</span>
+                        <span style={{ fontFamily:chakra, fontWeight:600 }}>{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {vAtual.status !== 'em_venda' && vAtual.status !== 'vendido' && (
                   <>
                     <SectionHead title="Alterar Status"/>

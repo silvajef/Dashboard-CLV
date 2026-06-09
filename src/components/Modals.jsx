@@ -79,11 +79,12 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
     valor_anuncio:       data?.valor_anuncio      || 0,
     chassi:              data?.chassi             || '',
     renavam:             data?.renavam            || '',
-    fornecedor_nome:     data?.fornecedor_nome    || '',
-    fornecedor_doc:      data?.fornecedor_doc     || '',
-    fornecedor_telefone: data?.fornecedor_telefone|| '',
-    fornecedor_email:    data?.fornecedor_email   || '',
-    fipe_historico:      data?.fipe_historico     || [],
+    fornecedor_tipo:     data?.fornecedor_tipo     || 'pessoa_fisica',
+    fornecedor_nome:     data?.fornecedor_nome     || '',
+    fornecedor_doc:      data?.fornecedor_doc      || '',
+    fornecedor_telefone: data?.fornecedor_telefone || '',
+    fornecedor_email:    data?.fornecedor_email    || '',
+    fipe_historico:      data?.fipe_historico      || [],
   })
 
   const [fotos, setFotos] = useState(data?.fotos || [])
@@ -276,17 +277,24 @@ export function ModalVeiculo({ data, onSave, onClose, loading }) {
         </div>
       </div>
 
-      {/* ── FORNECEDOR ── */}
+      {/* ── VENDEDOR (ORIGEM DO VEÍCULO) ── */}
       <div style={{ background:C.surface, border:`1px solid ${C.blue}33`, borderRadius:12, padding:16, marginBottom:16 }}>
-        <div style={{ fontSize:11, color:C.blue, fontWeight:700, letterSpacing:1, marginBottom:12 }}>👤 FORNECEDOR</div>
+        <div style={{ fontSize:11, color:C.blue, fontWeight:700, letterSpacing:1, marginBottom:12 }}>👤 VENDEDOR</div>
         <div style={{ display:'grid', gridTemplateColumns:cols2, gap:14 }}>
-          <UpperInput label="Nome do Fornecedor" value={f.fornecedor_nome} onChange={v=>setUp('fornecedor_nome',v)} placeholder="PESSOA FÍSICA OU JURÍDICA"/>
-          <DocInput   label="CPF / CNPJ"         value={f.fornecedor_doc}  onChange={v=>set('fornecedor_doc',v)}/>
-          <UpperInput label="Telefone"            value={f.fornecedor_telefone} onChange={v=>setUp('fornecedor_telefone',v)} placeholder="(11) 99999-9999"/>
+          <SelectInput label="Tipo de Vendedor" value={f.fornecedor_tipo} onChange={v=>set('fornecedor_tipo',v)}
+            options={[
+              { value:'pessoa_fisica',   label:'Pessoa Física'   },
+              { value:'pessoa_juridica', label:'Pessoa Jurídica' },
+              { value:'leilao',          label:'Leilão'          },
+              { value:'troca',           label:'Troca'           },
+            ]}/>
+          <UpperInput label="Nome do Vendedor" value={f.fornecedor_nome} onChange={v=>setUp('fornecedor_nome',v)} placeholder="NOME COMPLETO"/>
+          <DocInput   label="CPF / CNPJ"       value={f.fornecedor_doc}  onChange={v=>set('fornecedor_doc',v)}/>
+          <UpperInput label="Telefone"          value={f.fornecedor_telefone} onChange={v=>setUp('fornecedor_telefone',v)} placeholder="(11) 99999-9999"/>
           <div>
             <label style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:0.5, display:'block', marginBottom:5 }}>E-MAIL</label>
             <input type="email" value={f.fornecedor_email||''} onChange={e=>set('fornecedor_email',e.target.value.toLowerCase())}
-              placeholder="email@fornecedor.com.br"
+              placeholder="email@vendedor.com.br"
               style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, color:C.text, padding:'10px 14px', fontSize:14, width:'100%', outline:'none', boxSizing:'border-box', fontFamily:'inherit' }}/>
           </div>
         </div>
