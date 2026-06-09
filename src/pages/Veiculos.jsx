@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
-import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, getCf, progressoProcesso } from '../lib/constants'
+import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, custoTotal, getCf, progressoProcesso } from '../lib/constants'
 import { useBreakpoint } from '../lib/responsive'
 import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
 import Icon from '../components/Icon'
@@ -51,10 +51,26 @@ function DepreciacaoRow({ v }) {
   )
 }
 
+/** Badge no card da listagem quando o preço anunciado está abaixo do custo total. */
+function BadgeAbaixoCusto({ v }) {
+  if (!['pronto', 'em_venda'].includes(v.status)) return null
+  if (!v.valor_anuncio) return null
+  const ct = custoTotal(v)
+  if (v.valor_anuncio >= ct) return null
+  return (
+    <div style={{ marginTop:6, display:'flex', alignItems:'center' }}>
+      <span style={{ fontSize:9, fontWeight:700, color:C.red, background:C.redDim,
+                      padding:'2px 8px', borderRadius:3, fontFamily:russo, letterSpacing:'0.06em' }}>
+        ▼ ANÚNCIO {fmtR(ct - v.valor_anuncio)} ABAIXO DO CUSTO
+      </span>
+    </div>
+  )
+}
+
 function anoVeiculo(v) { return v.ano_modelo || v.ano || '—' }
 
 export default function Veiculos({
-  veiculos, prestadores, processos,
+  veiculos, prestadores, processos, metas,
   saveVeiculo, removeVeiculo,
   saveServico, removeServico,
   saveProcesso, concluirProcesso, cancelarProcesso,
@@ -126,6 +142,9 @@ export default function Veiculos({
   /* ─────────────────────────── DETALHE ──────────────────────────── */
   if (vAtual) {
     const cfgV = STATUS_VEICULO_CFG[vAtual.status] || { color: C.muted, label: vAtual.status }
+    const precoSugerido = (metas?.margem_min > 0 && vAtual.status !== 'vendido')
+      ? Math.round(custoTotal(vAtual) * (1 + metas.margem_min / 100))
+      : null
     const tabs = [
       ...(procAtual ? [{ id:'processo', icon:'🏷', label:'Processo de Venda' }] : []),
       { id:'info',       icon:'📄', label:'Informações' },
@@ -283,6 +302,7 @@ export default function Veiculos({
                     ['VALOR DE COMPRA',  fmtR(vAtual.valor_compra),                                      C.amber],
                     ['VALOR DE ANÚNCIO', vAtual.valor_anuncio ? fmtR(vAtual.valor_anuncio) : '—',        C.orange],
                     ['TABELA FIPE',      vAtual.valor_fipe    ? fmtR(vAtual.valor_fipe)    : '—',        C.green],
+                    ...(precoSugerido ? [['PREÇO SUGERIDO',  fmtR(precoSugerido),                        C.cyan]] : []),
                   ].map(([l, val, cor]) => (
                     <div key={l} style={{ background:C.surface, borderRadius:7, padding:'12px 14px', borderTop:`2px solid ${cor}` }}>
                       <div style={{ fontSize:9, color:C.faint, fontFamily:russo, letterSpacing:'0.1em', marginBottom:4 }}>{l}</div>
@@ -683,6 +703,7 @@ export default function Veiculos({
                 )}
 
                 <DepreciacaoRow v={v}/>
+                <BadgeAbaixoCusto v={v}/>
               </div>
 
               {/* Right indicator */}

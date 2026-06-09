@@ -127,7 +127,7 @@ function SectionLabel({ label, expanded, paddingTop = 0 }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────
-export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, signOut, fleetError, role, onSearch }) {
+export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, signOut, fleetError, role, onSearch, alertasCount = 0, onAbrirAlertas }) {
   const [expanded,    setExpanded]    = useState(false)
   const [searchHover, setSearchHover] = useState(false)
 
@@ -338,6 +338,58 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
             </div>
           </div>
         </div>
+
+        {/* Alertas */}
+        {onAbrirAlertas && (
+          <button
+            onClick={onAbrirAlertas}
+            title={!expanded ? `Alertas${alertasCount ? ` (${alertasCount})` : ''}` : undefined}
+            onMouseEnter={e => { e.currentTarget.style.background = alertasCount ? `${C.red}30` : C.cardHi }}
+            onMouseLeave={e => { e.currentTarget.style.background = alertasCount ? C.redDim : 'transparent' }}
+            style={{
+              width: '100%', border: `1px solid ${alertasCount ? C.red : C.border}`,
+              borderRadius: 7, marginBottom: 6,
+              padding: expanded ? '7px 10px' : 0,
+              height: expanded ? 'auto' : 32,
+              background: alertasCount ? C.redDim : 'transparent',
+              color: alertasCount ? C.red : C.muted,
+              fontSize: 12, cursor: 'pointer', fontFamily: "'Syne', sans-serif",
+              display: 'flex', alignItems: 'center',
+              justifyContent: expanded ? 'flex-start' : 'center',
+              gap: expanded ? 7 : 0,
+              transition: 'background 150ms, padding 200ms ease, gap 200ms ease',
+              overflow: 'hidden',
+            }}
+          >
+            <span style={{
+              position: 'relative', width: 24, height: 24, display: 'flex',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Icon name="bell" size={14}/>
+              {alertasCount > 0 && !expanded && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -4,
+                  minWidth: 13, height: 13, borderRadius: 99,
+                  background: C.red, color: '#fff',
+                  fontSize: 7, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 2px',
+                  boxShadow: `0 0 0 2px ${C.surface}`,
+                }}>
+                  {alertasCount > 9 ? '9+' : alertasCount}
+                </span>
+              )}
+            </span>
+            <span style={{
+              flex: expanded ? 1 : 0, width: expanded ? 'auto' : 0, textAlign: 'left',
+              opacity: expanded ? 1 : 0,
+              transition: 'opacity 160ms ease, width 200ms ease',
+              whiteSpace: 'nowrap', overflow: 'hidden',
+            }}>
+              Alertas{alertasCount > 0 ? ` (${alertasCount})` : ''}
+            </span>
+          </button>
+        )}
 
         {/* Logout */}
         <button

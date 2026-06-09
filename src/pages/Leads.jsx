@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { STATUS_LEAD_CFG, TIPOS_ATIVIDADE } from '../lib/plataformas/types'
 import { PLATAFORMAS } from '../lib/plataformas/index'
 import { C, fmtData } from '../lib/constants'
+import FunilLeads from '../components/FunilLeads'
 
 /* ── Estilos base ─────────────────────────────────────────────────────── */
 const s = {
@@ -291,6 +292,7 @@ export default function Leads({ veiculos }) {
   const [leadAberto,    setLeadAberto]    = useState(null)
   const [filtroStatus,  setFiltroStatus]  = useState('todos')
   const [busca,         setBusca]         = useState('')
+  const [visao,         setVisao]         = useState('kanban')
 
   if (loading) return (
     <div style={{ ...s.page, color: C.muted, fontSize: 13 }}>Carregando leads...</div>
@@ -317,43 +319,63 @@ export default function Leads({ veiculos }) {
           <h2 style={{ ...s.titulo, margin: 0 }}>CRM Leads</h2>
           <span style={{ fontSize: 12, color: C.muted }}>{totalAtivos} lead{totalAtivos !== 1 ? 's' : ''} ativos</span>
         </div>
-        <button style={{ ...s.btn, ...s.btnPrimary }}
-          onClick={() => setLeadAberto({ nome: '', status: 'novo', plataforma_origem: 'manual' })}>
-          + Novo Lead
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex' }}>
+            {[{ id: 'kanban', label: 'Kanban' }, { id: 'funil', label: 'Funil' }].map((v, i) => (
+              <button key={v.id}
+                style={{ ...s.btn, borderRadius: i === 0 ? '8px 0 0 8px' : '0 8px 8px 0',
+                         background: visao === v.id ? C.blue : C.card,
+                         color: visao === v.id ? '#fff' : C.muted,
+                         border: `1px solid ${visao === v.id ? C.blue : C.border}` }}
+                onClick={() => setVisao(v.id)}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <button style={{ ...s.btn, ...s.btnPrimary }}
+            onClick={() => setLeadAberto({ nome: '', status: 'novo', plataforma_origem: 'manual' })}>
+            + Novo Lead
+          </button>
+        </div>
       </div>
 
       {error && <div style={{ ...s.erro, marginBottom: 16 }}>{error}</div>}
 
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <input
-          style={{ ...s.input, width: 200 }}
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          placeholder='Buscar por nome ou telefone...'
-        />
-        <select style={{ ...s.input, width: 160 }}
-          value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
-          <option value='todos'>Todos os status</option>
-          {COLUNAS_PIPELINE.map(col => (
-            <option key={col} value={col}>{STATUS_LEAD_CFG[col].label}</option>
-          ))}
-        </select>
-      </div>
+      {visao === 'funil' ? (
+        <FunilLeads leads={leads} />
+      ) : (
+        <>
+          {/* Filtros */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            <input
+              style={{ ...s.input, width: 200 }}
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder='Buscar por nome ou telefone...'
+            />
+            <select style={{ ...s.input, width: 160 }}
+              value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+              <option value='todos'>Todos os status</option>
+              {COLUNAS_PIPELINE.map(col => (
+                <option key={col} value={col}>{STATUS_LEAD_CFG[col].label}</option>
+              ))}
+            </select>
+          </div>
 
-      {/* Kanban */}
-      <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16 }}>
-        {COLUNAS_PIPELINE.map(col => (
-          <ColunaKanban
-            key={col}
-            statusKey={col}
-            leads={leadsPorColuna[col] || []}
-            onLeadClick={setLeadAberto}
-            onDrop={moverLead}
-          />
-        ))}
-      </div>
+          {/* Kanban */}
+          <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16 }}>
+            {COLUNAS_PIPELINE.map(col => (
+              <ColunaKanban
+                key={col}
+                statusKey={col}
+                leads={leadsPorColuna[col] || []}
+                onLeadClick={setLeadAberto}
+                onDrop={moverLead}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {leadAberto && (
         <ModalLead

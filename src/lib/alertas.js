@@ -1,3 +1,5 @@
+import { calcularGarantias, STATUS_GARANTIA, formatarStatusGarantia } from './garantia.js'
+
 export const ALERTAS_CONFIG = {
   DIAS_SEM_SERVICO_PADRAO: 30,
 }
@@ -65,6 +67,88 @@ export function resumoAlertas(criticos) {
       [SEVERIDADE.MEDIA]:   criticos.filter(v => v.severidade === SEVERIDADE.MEDIA).length,
     },
   }
+}
+
+// ── Novos geradores de alerta ─────────────────────────────────────────────
+
+/**
+ * Gera alertas de garantia para vendas vencendo ou já vencidas.
+ * Enriquece com dados do veículo para descrições legíveis.
+ */
+function calcularAlertasGarantia(vendasRelacao, veiculos) {
+  return calcularGarantias(vendasRelacao)
+    .filter(g => g.status !== STATUS_GARANTIA.ATIVA)
+    .map(g => {
+      const v = veiculos.find(x => x.id === g.veiculo_id)
+      const veiculoDesc = v
+        ? `${v.placa} · ${v.marca_nome || ''} ${v.modelo_nome || v.modelo || ''}`.trim()
+        : `Venda #${String(g.id).slice(0, 6)}`
+      return {
+        id: `garantia_${g.id}`,
+        tipo: g.status === STATUS_GARANTIA.VENCENDO ? 'garantia_vencendo' : 'garantia_vencida',
+        severidade: g.status === STATUS_GARANTIA.VENCENDO ? SEVERIDADE.ALTA : SEVERIDADE.MEDIA,
+        titulo: g.status === STATUS_GARANTIA.VENCENDO
+          ? `Garantia vencendo em ${g.diasRestantes}d`
+          : 'Garantia vencida',
+        descricao: `${veiculoDesc} · ${formatarStatusGarantia(g)}`,
+        refTipo: 'veiculo',
+        refId: v?.id ?? null,
+      }
+    })
+}
+
+/**
+ * Gera alertas para veículos cujo custo de manutenção ultrapassou a meta.
+ * Requer servicos como array flat com veiculo_id (extraído de v.servicos na chamada).
+ */
+function calcularAlertasCusto(veiculos, servicos, metas) {
+  if (!metas?.custo_max_pct || metas.custo_max_pct <= 0) return []
+  const limite = metas.custo_max_pct / 100
+  return veiculos
+    .filter(v => v.status !== 'vendido' && (v.valor_compra || 0) > 0)
+    .flatMap(v => {
+      const gasto = servicos
+        .filter(s => s.veiculo_id === v.id && s.status !== 'cancelado')
+        .reduce((sum, s) => sum + (s.custo_pecas || 0) + (s.custo_mao || 0) + (s.outros || 0), 0)
+      const pct = gasto / v.valor_compra
+      if (pct <= limite) return []
+      return [{
+        id: `custo_alto_${v.id}`,
+        tipo: 'custo_alto',
+        severidade: pct > limite * 1.5 ? SEVERIDADE.ALTA : SEVERIDADE.MEDIA,
+        titulo: `Custo alto — ${v.placa}`,
+        descricao: `${v.marca_nome || ''} ${v.modelo_nome || v.modelo || ''} · ${Math.round(pct * 100)}% do valor de compra`,
+        refTipo: 'veiculo',
+        refId: v.id,
+      }]
+    })
+}
+
+/**
+ * Agrega todos os geradores em uma lista unificada, ordenada por severidade.
+ * servicos deve ser um array flat: veiculos.flatMap(v => v.servicos || [])
+ *
+ * gerarTodosAlertas({ veiculos, servicos, vendasRelacao, metas }) → Alerta[]
+ */
+export function gerarTodosAlertas({ veiculos = [], servicos = [], vendasRelacao = [], metas = {}, hoje = new Date() }) {
+  const porSeveridade = { [SEVERIDADE.CRITICA]: 3, [SEVERIDADE.ALTA]: 2, [SEVERIDADE.MEDIA]: 1 }
+  const alertasVeiculos = calcularVeiculosCriticos({ veiculos, servicos, metas, hoje })
+    .map(v => ({
+      id: `${v.tipoAlerta}_${v.id}`,
+      tipo: v.tipoAlerta,
+      severidade: v.severidade,
+      titulo: v.tipoAlerta === TIPO_ALERTA.SERVICO_PENDENTE
+        ? `Serviço pendente — ${v.placa}`
+        : `${v.placa} parado há ${v.diasEstoque}d`,
+      descricao: `${v.marca_nome || ''} ${v.modelo_nome || v.modelo || ''}`.trim(),
+      refTipo: 'veiculo',
+      refId: v.id,
+    }))
+  return [
+    ...alertasVeiculos,
+    ...calcularAlertasGarantia(vendasRelacao, veiculos),
+    ...calcularAlertasCusto(veiculos, servicos, metas),
+  ].sort((a, b) => (porSeveridade[b.severidade] || 0) - (porSeveridade[a.severidade] || 0))
 }
 
 function diasEntre(dataInicio, dataFim) {

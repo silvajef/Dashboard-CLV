@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
 import { LoadingScreen, ErrorBanner } from './components/UI'
@@ -7,6 +7,8 @@ import GlobalSearch from './components/GlobalSearch'
 import Icon from './components/Icon'
 import { APP_NAME, C } from './lib/constants'
 import { ToastProvider } from './context/ToastContext'
+import { gerarTodosAlertas } from './lib/alertas'
+import PainelAlertas from './components/PainelAlertas'
 import { FleetProvider, useFleet } from './context/FleetContext'
 import Veiculos    from './pages/Veiculos'
 import PosVenda    from './pages/PosVenda'
@@ -17,6 +19,7 @@ import Login       from './pages/Login'
 import Usuarios      from './pages/Usuarios'
 import Anuncios      from './pages/Anuncios'
 import Leads         from './pages/Leads'
+import Financeiro    from './pages/Financeiro'
 import Configuracoes from './pages/Configuracoes'
 
 const TABS_BASE = [
@@ -27,6 +30,7 @@ const TABS_BASE = [
   { id:'posvenda',    icon:'shield',     label:'Pós-Venda'    },
   { id:'prestadores', icon:'tools',      label:'Prestadores'  },
   { id:'historico',   icon:'list',       label:'Histórico'    },
+  { id:'financeiro',  icon:'coins',      label:'Financeiro'   },
 ]
 
 const TAB_USUARIOS      = { id:'usuarios',      icon:'users',    label:'Usuários'      }
@@ -67,6 +71,12 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   const [abrirVeiculoId,        setAbrirVeiculoId]        = useState(null)
   const [filtroInicialVeiculos, setFiltroInicialVeiculos] = useState(null)
   const [searchOpen,            setSearchOpen]            = useState(false)
+  const [alertasAberto,         setAlertasAberto]         = useState(false)
+
+  const alertas = useMemo(() => {
+    const servicos = fleet.veiculos.flatMap(v => v.servicos || [])
+    return gerarTodosAlertas({ veiculos: fleet.veiculos, servicos, vendasRelacao: fleet.vendasRelacao, metas: fleet.metas })
+  }, [fleet.veiculos, fleet.vendasRelacao, fleet.metas])
 
   // ⌘K / Ctrl+K global — deve ficar aqui, antes de qualquer early return
   useEffect(() => {
@@ -137,7 +147,13 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
           perfil={perfil} session={session} badge={badge}
           signOut={signOut} fleetError={!!fleet.error} role={role}
           onSearch={() => setSearchOpen(true)}
+          alertasCount={alertas.length}
+          onAbrirAlertas={() => setAlertasAberto(true)}
         />
+      )}
+
+      {alertasAberto && (
+        <PainelAlertas alertas={alertas} onFechar={() => setAlertasAberto(false)}/>
       )}
 
       {/* ── HEADER MOBILE ── */}
@@ -166,7 +182,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
 
         <div key={abaAtual} style={{ animation:'fadeInUp 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
         {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso} onIrParaEstoque={irParaEstoqueComFiltro}/>}
-        {abaAtual==='veiculos'    && <Veiculos     veiculos={fleet.veiculos} prestadores={fleet.prestadores} processos={fleet.processos}
+        {abaAtual==='veiculos'    && <Veiculos     veiculos={fleet.veiculos} prestadores={fleet.prestadores} processos={fleet.processos} metas={fleet.metas}
                                                    saveVeiculo={fleet.saveVeiculo} removeVeiculo={fleet.removeVeiculo}
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
@@ -179,6 +195,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico} prestadores={fleet.prestadores}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
+        {abaAtual==='financeiro'    && <Financeiro   veiculos={fleet.veiculos} metas={fleet.metas}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
         {abaAtual==='configuracoes' && <Configuracoes />}
         </div>
