@@ -200,7 +200,8 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
         </div>
       </div>
 
-      {/* ── Search ── */}
+      {/* ── Search ── (oculto quando onSearch não é fornecido, ex.: vendedor) */}
+      {onSearch && (
       <div
         onClick={onSearch}
         onMouseEnter={() => setSearchHover(true)}
@@ -245,6 +246,7 @@ export default function Sidebar({ tabs, aba, setAba, perfil, session, badge, sig
           ⌘K
         </span>
       </div>
+      )}
 
       {/* ── Nav ── */}
       <div style={{

@@ -137,14 +137,17 @@ export function AuthProvider({ children }) {
     setPerfil(null)
   }
 
-  const role       = perfil?.role || null
+  // 'visualizador' é o nome legado de 'vendedor' (migração v3.11). Normaliza para
+  // que sessões/linhas antigas se comportem como vendedor durante a transição.
+  const role       = perfil?.role === 'visualizador' ? 'vendedor' : (perfil?.role || null)
   const isAdmin    = role === 'admin'
   const isOperador = role === 'operador'
+  const isVendedor = role === 'vendedor'
   const podeEditar = isAdmin || isOperador
 
   const value = {
     session, perfil, role,
-    isAdmin, isOperador, podeEditar,
+    isAdmin, isOperador, isVendedor, podeEditar,
     loading, signOut,
     recarregarPerfil: async () => {
       if (session?.user?.id) {
