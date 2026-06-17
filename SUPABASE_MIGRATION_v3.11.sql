@@ -19,3 +19,20 @@ ALTER TABLE public.profiles ALTER COLUMN role SET DEFAULT 'vendedor';
 ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_role_check
   CHECK (role IN ('admin', 'operador', 'vendedor'));
+
+-- 5. Atualiza o trigger handle_new_user: o fallback de role era 'visualizador'
+--    (definido em v3.6), que agora violaria a CHECK constraint acima. Um signup
+--    sem 'role' no metadata falharia. Fallback passa a ser 'vendedor'.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, nome, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'vendedor')
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
