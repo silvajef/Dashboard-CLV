@@ -15,9 +15,9 @@ const C = {
 }
 
 const ROLE_INFO = {
-  admin:        { label: 'Admin',        cor: '#ef4444' },
-  operador:     { label: 'Operador',     cor: '#3b82f6' },
-  visualizador: { label: 'Visualizador', cor: '#64748b' },
+  admin:    { label: 'Admin',    cor: '#ef4444' },
+  operador: { label: 'Operador', cor: '#3b82f6' },
+  vendedor: { label: 'Vendedor', cor: '#64748b' },
 }
 
 const PERMISSOES = {
@@ -37,12 +37,12 @@ const PERMISSOES = {
     { ok: false, texto: 'Alterar metas do sistema' },
     { ok: false, texto: 'Criar ou gerenciar usuários' },
   ],
-  visualizador: [
-    { ok: true,  texto: 'Ver todos os dados' },
+  vendedor: [
+    { ok: true,  texto: 'Ver o estoque e a ficha de cada veículo' },
+    { ok: true,  texto: 'Ver o preço de venda dos veículos' },
+    { ok: false, texto: 'Ver dados financeiros (custos, margem, comissões)' },
+    { ok: false, texto: 'Acessar KPIs, Financeiro, Leads ou Pós-Venda' },
     { ok: false, texto: 'Criar, editar ou excluir qualquer dado' },
-    { ok: false, texto: 'Registrar vendas' },
-    { ok: false, texto: 'Alterar metas do sistema' },
-    { ok: false, texto: 'Criar ou gerenciar usuários' },
   ],
 }
 
@@ -126,7 +126,7 @@ export default function Usuarios() {
           </div>
           {usuarios.map(u => {
             const ehVoce = u.id === session?.user?.id
-            const info   = ROLE_INFO[u.role] || ROLE_INFO.visualizador
+            const info   = ROLE_INFO[u.role === 'visualizador' ? 'vendedor' : u.role] || ROLE_INFO.vendedor
             return (
               <div key={u.id} style={{ ...s.tRow, opacity: u.ativo ? 1 : 0.45 }}>
                 <div style={{ flex: 2 }}>
@@ -214,7 +214,7 @@ function ModalNovo({ onClose, onSalvar }) {
           <select value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))} style={{ ...s.mInput, cursor: 'pointer' }}>
             <option value="admin">Admin — acesso total</option>
             <option value="operador">Operador — cria e edita, sem excluir</option>
-            <option value="visualizador">Visualizador — somente leitura</option>
+            <option value="vendedor">Vendedor — só estoque, sem financeiro</option>
           </select>
         </MField>
         <PermCard role={form.role} />
@@ -229,7 +229,9 @@ function ModalNovo({ onClose, onSalvar }) {
 }
 
 function ModalEditar({ usuario, ehVoce, onClose, onSalvar }) {
-  const [form,   setForm]   = useState({ nome: usuario.nome || '', role: usuario.role })
+  // 'visualizador' é nome legado de 'vendedor' (migração v3.11).
+  const roleInicial = usuario.role === 'visualizador' ? 'vendedor' : usuario.role
+  const [form,   setForm]   = useState({ nome: usuario.nome || '', role: roleInicial })
   const [erro,   setErro]   = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -250,7 +252,7 @@ function ModalEditar({ usuario, ehVoce, onClose, onSalvar }) {
           <select value={form.role} onChange={e => setForm(p => ({...p, role: e.target.value}))} disabled={ehVoce} style={{ ...s.mInput, cursor: ehVoce ? 'not-allowed' : 'pointer', opacity: ehVoce ? 0.5 : 1 }}>
             <option value="admin">Admin — acesso total</option>
             <option value="operador">Operador — cria e edita, sem excluir</option>
-            <option value="visualizador">Visualizador — somente leitura</option>
+            <option value="vendedor">Vendedor — só estoque, sem financeiro</option>
           </select>
           {ehVoce && <p style={{ fontSize: 11, color: C.muted, margin: '4px 0 0' }}>Você não pode alterar seu próprio role.</p>}
         </MField>

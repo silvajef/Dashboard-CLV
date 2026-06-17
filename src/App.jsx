@@ -22,6 +22,7 @@ import Leads         from './pages/Leads'
 import Financeiro    from './pages/Financeiro'
 import Configuracoes   from './pages/Configuracoes'
 import PainelVendedor  from './pages/PainelVendedor'
+import EstoqueVendedor from './pages/EstoqueVendedor'
 
 const TABS_BASE = [
   { id:'dashboard',   icon:'dashboard',  label:'KPIs'        },
@@ -32,16 +33,19 @@ const TABS_BASE = [
   { id:'prestadores', icon:'tools',      label:'Prestadores'  },
   { id:'historico',   icon:'list',       label:'Histórico'    },
   { id:'financeiro',  icon:'coins',      label:'Financeiro'   },
-  { id:'vendedor',    icon:'users',      label:'Vendedor'     },
+  { id:'comissoes',   icon:'users',      label:'Comissões'    },
 ]
+
+// Tela exclusiva do perfil vendedor — única aba que ele enxerga.
+const TAB_ESTOQUE_VENDEDOR = { id:'estoque-vendedor', icon:'truck', label:'Estoque' }
 
 const TAB_USUARIOS      = { id:'usuarios',      icon:'users',    label:'Usuários'      }
 const TAB_CONFIGURACOES = { id:'configuracoes', icon:'settings', label:'Config.'       }
 
 const ROLE_BADGE = {
-  admin:        { label:'Admin', cor:'#ef4444' },
-  operador:     { label:'Op.',   cor:'#3b82f6' },
-  visualizador: { label:'Viz.',  cor:'#64748b' },
+  admin:    { label:'Admin', cor:'#ef4444' },
+  operador: { label:'Op.',   cor:'#3b82f6' },
+  vendedor: { label:'Vend.', cor:'#64748b' },
 }
 
 export default function App() {
@@ -80,14 +84,16 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
     return gerarTodosAlertas({ veiculos: fleet.veiculos, servicos, vendasRelacao: fleet.vendasRelacao, metas: fleet.metas })
   }, [fleet.veiculos, fleet.vendasRelacao, fleet.metas])
 
-  // ⌘K / Ctrl+K global — deve ficar aqui, antes de qualquer early return
+  // ⌘K / Ctrl+K global — deve ficar aqui, antes de qualquer early return.
+  // Vendedor não tem busca global (acessa só estoque).
   useEffect(() => {
+    if (role === 'vendedor') return
     const handler = e => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [role])
 
   if (!fleet.loading) jaCarregou.current = true
   if (!jaCarregou.current && fleet.loading) return <LoadingScreen />
@@ -110,22 +116,28 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
     if (params.abrirVeiculoId) setAbrirVeiculoId(params.abrirVeiculoId)
   }
 
-  const TABS    = role === 'admin' ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES] : TABS_BASE
-  const abaAtual = TABS.find(t => t.id === aba) ? aba : 'dashboard'
-  const badge   = ROLE_BADGE[role] || ROLE_BADGE.visualizador
+  // Vendedor só enxerga a tela de estoque. Admin ganha abas administrativas.
+  const TABS =
+    role === 'vendedor' ? [TAB_ESTOQUE_VENDEDOR]
+    : role === 'admin'  ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES]
+    : TABS_BASE
+  const abaAtual = TABS.find(t => t.id === aba) ? aba : TABS[0].id
+  const badge   = ROLE_BADGE[role] || ROLE_BADGE.vendedor
   // Sidebar uses fixed 60px — overlays content when expanded
   const SIDEBAR_COLLAPSED = 60
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg, color:C.text, fontFamily:"'Outfit','Segoe UI',sans-serif" }}>
-      <GlobalSearch
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onNavigate={handleSearchNavigate}
-        veiculos={fleet.veiculos}
-        prestadores={fleet.prestadores}
-        clientes={fleet.clientes}
-      />
+      {role !== 'vendedor' && (
+        <GlobalSearch
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          onNavigate={handleSearchNavigate}
+          veiculos={fleet.veiculos}
+          prestadores={fleet.prestadores}
+          clientes={fleet.clientes}
+        />
+      )}
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         html{-webkit-text-size-adjust:100%}
@@ -148,9 +160,9 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
           tabs={TABS} aba={abaAtual} setAba={setAba}
           perfil={perfil} session={session} badge={badge}
           signOut={signOut} fleetError={!!fleet.error} role={role}
-          onSearch={() => setSearchOpen(true)}
+          onSearch={role === 'vendedor' ? null : () => setSearchOpen(true)}
           alertasCount={alertas.length}
-          onAbrirAlertas={() => setAlertasAberto(true)}
+          onAbrirAlertas={role === 'vendedor' ? null : () => setAlertasAberto(true)}
         />
       )}
 
@@ -198,7 +210,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
         {abaAtual==='financeiro'    && <Financeiro   veiculos={fleet.veiculos} metas={fleet.metas}/>}
-        {abaAtual==='vendedor'      && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil}/>}
+        {abaAtual==='comissoes'     && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil}/>}
+        {abaAtual==='estoque-vendedor' && <EstoqueVendedor veiculos={fleet.veiculos}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
         {abaAtual==='configuracoes' && <Configuracoes />}
         </div>
