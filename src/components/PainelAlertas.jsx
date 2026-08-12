@@ -23,6 +23,7 @@ const TIPO_LABEL = {
   garantia_vencendo: 'Garantia',
   garantia_vencida:  'Garantia',
   custo_alto:        'Custo',
+  reprecificar:      'Giro',
 }
 
 /** Cartão individual de alerta com botão de dispensa. */

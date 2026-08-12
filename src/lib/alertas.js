@@ -1,12 +1,16 @@
 import { calcularGarantias, STATUS_GARANTIA, formatarStatusGarantia } from './garantia.js'
+import { diasNoEstoque } from './constants.js'
 
 export const ALERTAS_CONFIG = {
-  DIAS_SEM_SERVICO_PADRAO: 30,
+  DIAS_SEM_SERVICO_PADRAO:    30,
+  DIAS_REPRECIFICAR_ATENCAO:  30,
+  DIAS_REPRECIFICAR_CRITICO:  45,
 }
 
 export const TIPO_ALERTA = {
   SERVICO_PENDENTE: 'servico_pendente',
   SEM_MANUTENCAO:   'sem_manutencao',
+  REPRECIFICAR:     'reprecificar',
 }
 
 export const SEVERIDADE = {
@@ -26,7 +30,7 @@ export function calcularVeiculosCriticos({ veiculos = [], servicos = [], metas =
 
 export function enriquecerVeiculo(veiculo, servicos, limiar, hoje = new Date()) {
   const diasEstoque = veiculo.data_entrada
-    ? diasEntre(new Date(veiculo.data_entrada), hoje)
+    ? diasNoEstoque(veiculo, hoje)
     : null
 
   const servicosDoVeiculo = servicos
@@ -125,6 +129,32 @@ function calcularAlertasCusto(veiculos, servicos, metas) {
 }
 
 /**
+ * Gera alertas de reprecificação para veículos à venda parados no pátio.
+ * Dois estágios: DIAS_REPRECIFICAR_ATENCAO (media) e DIAS_REPRECIFICAR_CRITICO (alta).
+ * Termômetro de giro de estoque — ver docs/aprendizados-zennith.md.
+ */
+function calcularAlertasReprecificacao(veiculos, hoje) {
+  return veiculos
+    .filter(v => ['pronto', 'em_venda'].includes(v.status) && v.data_entrada)
+    .flatMap(v => {
+      const dias = diasNoEstoque(v, hoje)
+      if (dias < ALERTAS_CONFIG.DIAS_REPRECIFICAR_ATENCAO) return []
+      const critico = dias >= ALERTAS_CONFIG.DIAS_REPRECIFICAR_CRITICO
+      return [{
+        id: `reprecificar_${v.id}`,
+        tipo: TIPO_ALERTA.REPRECIFICAR,
+        severidade: critico ? SEVERIDADE.ALTA : SEVERIDADE.MEDIA,
+        titulo: critico
+          ? `Reprecificar — ${v.placa} parado há ${dias}d`
+          : `Avaliar preço — ${v.placa} parado há ${dias}d`,
+        descricao: `${v.marca_nome || ''} ${v.modelo_nome || v.modelo || ''}`.trim(),
+        refTipo: 'veiculo',
+        refId: v.id,
+      }]
+    })
+}
+
+/**
  * Agrega todos os geradores em uma lista unificada, ordenada por severidade.
  * servicos deve ser um array flat: veiculos.flatMap(v => v.servicos || [])
  *
@@ -148,6 +178,7 @@ export function gerarTodosAlertas({ veiculos = [], servicos = [], vendasRelacao 
     ...alertasVeiculos,
     ...calcularAlertasGarantia(vendasRelacao, veiculos),
     ...calcularAlertasCusto(veiculos, servicos, metas),
+    ...calcularAlertasReprecificacao(veiculos, hoje),
   ].sort((a, b) => (porSeveridade[b.severidade] || 0) - (porSeveridade[a.severidade] || 0))
 }
 

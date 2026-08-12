@@ -182,9 +182,9 @@ export const custoTotal = v =>
 /** custoOperacional — manutenção + custos fixos (sem o valor de compra) */
 export const custoOperacional = v => custoV(v) + custoFixos(v)
 
-export const diasNoEstoque = v => {
+export const diasNoEstoque = (v, hoje = new Date()) => {
   const entrada = new Date(v.data_entrada)
-  const saida   = v.data_venda ? new Date(v.data_venda) : new Date()
+  const saida   = v.data_venda ? new Date(v.data_venda) : hoje
   return Math.max(0, Math.floor((saida - entrada) / 86400000))
 }
 

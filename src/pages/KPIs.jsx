@@ -3,7 +3,10 @@ import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
 import Icon from '../components/Icon'
 import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, custoFixos } from '../lib/constants'
+import { ALERTAS_CONFIG } from '../lib/alertas'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
+
+const { DIAS_REPRECIFICAR_ATENCAO: DIAS_ATENCAO, DIAS_REPRECIFICAR_CRITICO: DIAS_CRITICO } = ALERTAS_CONFIG
 
 // Normaliza DD/MM/YYYY ou YYYY-MM-DD para YYYY-MM-DD (comparação segura)
 const normDate = str => {
@@ -96,8 +99,8 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const diasVend     = vendidos.map(v => diasEstoque(v))
     const mediaDiasAti = diasAtivos.length   ? diasAtivos.reduce((a,b)=>a+b,0)/diasAtivos.length : 0
     const mediaDiasVend= diasVend.length     ? diasVend.reduce((a,b)=>a+b,0)/diasVend.length : 0
-    const parados60    = ativos.filter(v => diasEstoque(v) > 60)
-    const parados90    = ativos.filter(v => diasEstoque(v) > 90)
+    const paradosAtencao = ativos.filter(v => diasEstoque(v) >= DIAS_ATENCAO)
+    const paradosCritico = ativos.filter(v => diasEstoque(v) >= DIAS_CRITICO)
     const taxaGiro     = todos.length > 0 ? (vendidos.length/todos.length)*100 : 0
 
     const receita      = vendidos.reduce((s,v)=>s+(v.valor_venda||0),0)
@@ -139,7 +142,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const rankingCusto = ativos.map(v=>({...v,_dias:diasEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
     const rankingDias  = [...ativos].sort((a,b)=>diasEstoque(b)-diasEstoque(a))
 
-    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, parados60, parados90, taxaGiro, receita, custoAquis, custoMntVend, custoFxVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
+    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, paradosAtencao, paradosCritico, taxaGiro, receita, custoAquis, custoMntVend, custoFxVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
   }, [vPeriodo])
 
   const mesAtual = useMemo(()=>{
@@ -430,10 +433,10 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
         <div>
           <Grid cols={4} gap={12} style={{marginBottom:24}}>
             {[
-              {label:'Dias Médios (ativos)',  value:fmtDias(calc.mediaDiasAti),  color:calc.mediaDiasAti<metas.dias_max_estoque?C.green:C.red},
-              {label:'Dias Médios (vendidos)',value:fmtDias(calc.mediaDiasVend), color:C.cyan},
-              {label:'Parados >60 dias',      value:calc.parados60.length,       color:calc.parados60.length>0?C.amber:C.green},
-              {label:'Parados >90 dias',      value:calc.parados90.length,       color:calc.parados90.length>0?C.red:C.green},
+              {label:'Dias Médios (ativos)',       value:fmtDias(calc.mediaDiasAti),    color:calc.mediaDiasAti<metas.dias_max_estoque?C.green:C.red},
+              {label:'Dias Médios (vendidos)',     value:fmtDias(calc.mediaDiasVend),   color:C.cyan},
+              {label:`Parados ≥${DIAS_ATENCAO} dias`,  value:calc.paradosAtencao.length, color:calc.paradosAtencao.length>0?C.amber:C.green},
+              {label:`Parados ≥${DIAS_CRITICO} dias`,  value:calc.paradosCritico.length, color:calc.paradosCritico.length>0?C.red:C.green},
             ].map(k=>(
               <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'18px 20px',borderTop:`2px solid ${k.color}`}}>
                 <div style={{...mono,fontSize:9,color:C.faint,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:10}}>{k.label}</div>
@@ -446,7 +449,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               <SectionHead title="🏆 Mais Tempo em Estoque"/>
               {calc.rankingDias.map((v,i)=>{
                 const d=diasEstoque(v)
-                const cor=d<30?C.green:d<60?C.cyan:d<90?C.amber:C.red
+                const cor=d<DIAS_ATENCAO?C.green:d<DIAS_CRITICO?C.amber:C.red
                 const maxD=diasEstoque(calc.rankingDias[0]||v)+1
                 return(
                   <div key={v.id}
@@ -464,14 +467,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                       <span style={{...mono,fontWeight:800,color:cor}}>{fmtDias(d)}</span>
                     </div>
                     <GaugeBar value={d} max={maxD} color={cor} height={4}/>
-                    <div style={{fontSize:10,color:C.muted,marginTop:4}}>{d>90?'🔴 Crítico':d>60?'🟡 Atenção':'🟢 Normal'}</div>
+                    <div style={{fontSize:10,color:C.muted,marginTop:4}}>{d>=DIAS_CRITICO?'🔴 Reprecificar':d>=DIAS_ATENCAO?'🟡 Avaliar preço':'🟢 Normal'}</div>
                   </div>
                 )
               })}
             </Card>
             <Card>
               <SectionHead title="Distribuição por Faixa"/>
-              {[{label:'0–30 dias',min:0,max:30,color:C.green},{label:'31–60 dias',min:31,max:60,color:C.cyan},{label:'61–90 dias',min:61,max:90,color:C.amber},{label:'> 90 dias',min:91,max:9999,color:C.red}].map(f=>{
+              {[{label:`0–${DIAS_ATENCAO-1} dias`,min:0,max:DIAS_ATENCAO-1,color:C.green},{label:`${DIAS_ATENCAO}–${DIAS_CRITICO-1} dias`,min:DIAS_ATENCAO,max:DIAS_CRITICO-1,color:C.amber},{label:`≥ ${DIAS_CRITICO} dias`,min:DIAS_CRITICO,max:9999,color:C.red}].map(f=>{
                 const qtd=calc.ativos.filter(v=>{const d=diasEstoque(v);return d>=f.min&&d<=f.max}).length
                 const pct=calc.ativos.length>0?(qtd/calc.ativos.length)*100:0
                 return(
@@ -729,7 +732,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               {label:'Margem bruta',     atual:calc.margem,        meta:metas.margem_min||8,        fmt:fmtPct,       invert:false},
               {label:'Tempo em estoque', atual:calc.mediaDiasAti,  meta:metas.dias_max_estoque||90, fmt:fmtDias,      invert:true},
               {label:'Custo/valor',      atual:calc.indiceCusto,   meta:metas.custo_max_pct||5,     fmt:fmtPct,       invert:true},
-              {label:'Parados >90 dias', atual:calc.parados90.length,meta:0,                        fmt:v=>`${v}v`,  invert:true},
+              {label:`Parados ≥${DIAS_CRITICO} dias`, atual:calc.paradosCritico.length,meta:0,       fmt:v=>`${v}v`,  invert:true},
               {label:'ROI do estoque',   atual:calc.roi,           meta:10,                          fmt:fmtPct,      invert:false},
             ].map(row=>{
               const ok=row.invert?row.atual<=row.meta:row.atual>=row.meta
@@ -749,7 +752,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               )
             })}
             {(()=>{
-              const rows=[{a:mesAtual.qtd,m:metas.vendas_mes||3,i:false},{a:calc.margem,m:metas.margem_min||8,i:false},{a:calc.mediaDiasAti,m:metas.dias_max_estoque||90,i:true},{a:calc.indiceCusto,m:metas.custo_max_pct||5,i:true},{a:calc.parados90.length,m:0,i:true},{a:calc.roi,m:10,i:false}]
+              const rows=[{a:mesAtual.qtd,m:metas.vendas_mes||3,i:false},{a:calc.margem,m:metas.margem_min||8,i:false},{a:calc.mediaDiasAti,m:metas.dias_max_estoque||90,i:true},{a:calc.indiceCusto,m:metas.custo_max_pct||5,i:true},{a:calc.paradosCritico.length,m:0,i:true},{a:calc.roi,m:10,i:false}]
               const ok=rows.filter(r=>r.i?r.a<=r.m:r.a>=r.m).length
               const pct=(ok/rows.length)*100
               const cor=pct>=80?C.green:pct>=50?C.amber:C.red

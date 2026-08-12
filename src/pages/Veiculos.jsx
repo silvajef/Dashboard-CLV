@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
-import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, custoTotal, getCf, progressoProcesso } from '../lib/constants'
+import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, custoTotal, diasNoEstoque, getCf, progressoProcesso } from '../lib/constants'
+import { ALERTAS_CONFIG } from '../lib/alertas'
 import { useBreakpoint } from '../lib/responsive'
 import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
 import Icon from '../components/Icon'
@@ -75,6 +76,24 @@ function BadgeAbaixoCusto({ v }) {
       <span style={{ fontSize:9, fontWeight:700, color:C.red, background:C.redDim,
                       padding:'2px 8px', borderRadius:3, fontFamily:russo, letterSpacing:'0.06em' }}>
         ▼ ANÚNCIO {fmtR(ct - v.valor_anuncio)} ABAIXO DO CUSTO
+      </span>
+    </div>
+  )
+}
+
+/** Badge no card da listagem quando o veículo passou do limiar de dias parado (giro de estoque). */
+function BadgeParado({ v }) {
+  if (!['pronto', 'em_venda'].includes(v.status)) return null
+  if (!v.data_entrada) return null
+  const dias = diasNoEstoque(v)
+  if (dias < ALERTAS_CONFIG.DIAS_REPRECIFICAR_ATENCAO) return null
+  const critico = dias >= ALERTAS_CONFIG.DIAS_REPRECIFICAR_CRITICO
+  const cor = critico ? C.red : C.amber
+  return (
+    <div style={{ marginTop:6, display:'flex', alignItems:'center' }}>
+      <span style={{ fontSize:9, fontWeight:700, color:cor, background:`${cor}18`,
+                      padding:'2px 8px', borderRadius:3, fontFamily:russo, letterSpacing:'0.06em' }}>
+        ⏱ {dias}D PARADO {critico ? '— REPRECIFICAR' : '— AVALIAR PREÇO'}
       </span>
     </div>
   )
@@ -755,6 +774,7 @@ export default function Veiculos({
 
                 <DepreciacaoRow v={v}/>
                 <BadgeAbaixoCusto v={v}/>
+                <BadgeParado v={v}/>
                 <BadgeTroca v={v}/>
               </div>
 

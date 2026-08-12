@@ -3,6 +3,7 @@
  * v3.9.3 — Ficha do Veículo · Estoque · Vendas · KPI Executivo
  */
 import { custoV, custoFixos, getCf, diasNoEstoque } from './constants'
+import { ALERTAS_CONFIG } from './alertas'
 
 /* ── Formatadores internos ──────────────────────────────────────────────── */
 const R  = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
@@ -423,7 +424,7 @@ export function relatorioKPI(veiculos, metas = {}, opts = {}) {
 
   const diasAtivos  = ativos.map(v=>diasNoEstoque(v))
   const mediaDias   = diasAtivos.length ? diasAtivos.reduce((a,b)=>a+b,0)/diasAtivos.length : 0
-  const parados90   = ativos.filter(v=>diasNoEstoque(v)>90).length
+  const paradosCritico = ativos.filter(v=>diasNoEstoque(v)>=ALERTAS_CONFIG.DIAS_REPRECIFICAR_CRITICO).length
   const taxaGiro    = todos.length > 0 ? (vendidos.length/todos.length)*100 : 0
 
   const custoMntAtivos = ativos.reduce((s,v)=>s+custoV(v), 0)
@@ -483,7 +484,7 @@ export function relatorioKPI(veiculos, metas = {}, opts = {}) {
       <div class="kpi-card"><div class="kl">Estoque Ativo</div><div class="kv">${ativos.length}</div></div>
       <div class="kpi-card"><div class="kl">Vendas Realizadas</div><div class="kv verde">${vendidos.length}</div></div>
       <div class="kpi-card"><div class="kl">Taxa de Giro</div><div class="kv">${P(taxaGiro)}</div></div>
-      <div class="kpi-card"><div class="kl">Parados +90 dias</div><div class="kv ${parados90>0?'vermelho':''}">${parados90}</div></div>
+      <div class="kpi-card"><div class="kl">Parados ≥${ALERTAS_CONFIG.DIAS_REPRECIFICAR_CRITICO} dias</div><div class="kv ${paradosCritico>0?'vermelho':''}">${paradosCritico}</div></div>
     </div>
     <div class="grid4">
       <div class="kpi-card"><div class="kl">Receita Total</div><div class="kv verde">${R(receita)}</div></div>
