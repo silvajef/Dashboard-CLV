@@ -18,12 +18,24 @@ export async function upsertLead(lead) {
   const { id, veiculo, ...payload } = lead
   payload.updated_at = new Date().toISOString()
 
-  const { data, error } = id
-    ? await supabase.from('leads').update(payload).eq('id', id).select().single()
-    : await supabase.from('leads').insert(payload).select().single()
+  if (id) {
+    const { data, error } = await supabase.from('leads').update(payload).eq('id', id).select().single()
+    if (error) throw error
+    return data
+  }
 
+  // Proveniência: lead manual carimba quem criou (não é fronteira de RLS —
+  // ver migration 20260708120000). O webhook OLX já grava user_id próprio.
+  if (payload.user_id == null) payload.user_id = await usuarioAtualId()
+
+  const { data, error } = await supabase.from('leads').insert(payload).select().single()
   if (error) throw error
   return data
+}
+
+async function usuarioAtualId() {
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.user?.id ?? null
 }
 
 export async function deleteLead(id) {

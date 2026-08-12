@@ -17,17 +17,14 @@ import Historico   from './pages/Historico'
 import KPIs        from './pages/KPIs'
 import Login       from './pages/Login'
 import Usuarios      from './pages/Usuarios'
-import Anuncios      from './pages/Anuncios'
 import Leads         from './pages/Leads'
 import Financeiro    from './pages/Financeiro'
-import Configuracoes   from './pages/Configuracoes'
 import PainelVendedor  from './pages/PainelVendedor'
 import EstoqueVendedor from './pages/EstoqueVendedor'
 
 const TABS_BASE = [
   { id:'dashboard',   icon:'dashboard',  label:'KPIs'        },
   { id:'veiculos',    icon:'truck',      label:'Estoque'      },
-  { id:'anuncios',    icon:'megaphone',  label:'Anúncios'     },
   { id:'leads',       icon:'target',     label:'Leads'        },
   { id:'posvenda',    icon:'shield',     label:'Pós-Venda'    },
   { id:'prestadores', icon:'tools',      label:'Prestadores'  },
@@ -40,7 +37,6 @@ const TABS_BASE = [
 const TAB_ESTOQUE_VENDEDOR = { id:'estoque-vendedor', icon:'truck', label:'Estoque' }
 
 const TAB_USUARIOS      = { id:'usuarios',      icon:'users',    label:'Usuários'      }
-const TAB_CONFIGURACOES = { id:'configuracoes', icon:'settings', label:'Config.'       }
 
 const ROLE_BADGE = {
   admin:    { label:'Admin', cor:'#ef4444' },
@@ -119,7 +115,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   // Vendedor só enxerga a tela de estoque. Admin ganha abas administrativas.
   const TABS =
     role === 'vendedor' ? [TAB_ESTOQUE_VENDEDOR]
-    : role === 'admin'  ? [...TABS_BASE, TAB_USUARIOS, TAB_CONFIGURACOES]
+    : role === 'admin'  ? [...TABS_BASE, TAB_USUARIOS]
     : TABS_BASE
   const abaAtual = TABS.find(t => t.id === aba) ? aba : TABS[0].id
   const badge   = ROLE_BADGE[role] || ROLE_BADGE.vendedor
@@ -202,7 +198,6 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}
                                                    filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}/>}
-        {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}/>}
         {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
                                                    saveVendaRelacao={fleet.saveVendaRelacao} saveCliente={fleet.saveCliente} removeCliente={fleet.removeCliente}
@@ -213,7 +208,6 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
         {abaAtual==='comissoes'     && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil}/>}
         {abaAtual==='estoque-vendedor' && <EstoqueVendedor veiculos={fleet.veiculos}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
-        {abaAtual==='configuracoes' && <Configuracoes />}
         </div>
       </main>
 

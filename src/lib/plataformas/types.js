@@ -1,77 +1,9 @@
 /**
- * Tipos e contratos compartilhados entre todos os adaptadores de plataforma.
- * Cada adaptador deve exportar as mesmas funções nomeadas — ver AdaptadorPlataforma abaixo.
+ * Config de status e tipos de atividade do CRM de leads.
+ * (A camada de anúncios/OAuth foi removida — restam só os contratos de lead.)
  */
 
-/** @typedef {'mercadolivre'|'olx'|'icarros'|'mobiauto'|'napista'} SlugPlataforma */
-/** @typedef {'ativo'|'pausado'|'expirado'|'vendido'|'erro'|'rascunho'}  StatusAnuncio */
-/** @typedef {'novo'|'contato'|'visita'|'proposta'|'ganho'|'perdido'}    StatusLead    */
-
-/**
- * @typedef {Object} TokenOAuth
- * @property {string} access_token
- * @property {string} [refresh_token]
- * @property {number} expires_in  - segundos até expirar
- * @property {string} [user_id]   - ID do usuário na plataforma
- */
-
-/**
- * @typedef {Object} AtributoML
- * @property {string}   id
- * @property {string}   name
- * @property {string}   [value_type]
- * @property {Object[]} [allowed_values]
- * @property {Object}   [tags]
- * @property {number}   [relevance]
- */
-
-/**
- * @typedef {Object} DadosPublicacao
- * @property {number}      preco
- * @property {string[]}    fotos
- * @property {string}      listing_type_id
- * @property {string}      [category_id]
- * @property {AtributoML[]} [atributos]
- */
-
-/**
- * @typedef {Object} ResultadoPublicacao
- * @property {string} listing_id - ID externo do anúncio na plataforma
- * @property {string} url        - URL pública do anúncio
- */
-
-/**
- * @typedef {Object} LeadExterno
- * @property {string} nome
- * @property {string} [telefone]
- * @property {string} [email]
- * @property {string} listing_id
- * @property {SlugPlataforma} plataforma_origem
- * @property {string} mensagem
- */
-
-/**
- * Contrato que todos os adaptadores de plataforma implementam.
- * Stubs lançam Error descritivo até a integração ser configurada.
- *
- * @typedef {Object} AdaptadorPlataforma
- * @property {(redirectUri: string) => string}                                           construirUrlAutenticacao
- * @property {(token: string, veiculo: Object, dados: DadosPublicacao) => Promise<ResultadoPublicacao>} publicarAnuncio
- * @property {(token: string, listingId: string, dados: Object) => Promise<void>}        atualizarAnuncio
- * @property {(token: string, listingId: string) => Promise<void>}                       pausarAnuncio
- * @property {(token: string, listingId: string) => Promise<void>}                       reativarAnuncio
- * @property {(token: string, listingId: string) => Promise<void>}                       fecharAnuncio
- * @property {(token: string, listingId: string) => Promise<LeadExterno[]>}              buscarLeads
- */
-
-export const STATUS_ANUNCIO_CFG = {
-  ativo:    { label: 'Ativo',    color: '#22d3a0' },
-  pausado:  { label: 'Pausado',  color: '#f59e0b' },
-  expirado: { label: 'Expirado', color: '#f4485e' },
-  vendido:  { label: 'Vendido',  color: '#636b85' },
-  erro:     { label: 'Erro',     color: '#f4485e' },
-  rascunho: { label: 'Rascunho', color: '#4f8ef7' },
-}
+/** @typedef {'novo'|'contato'|'visita'|'proposta'|'ganho'|'perdido'} StatusLead */
 
 export const STATUS_LEAD_CFG = {
   novo:     { label: 'Novo Lead',   color: '#4f8ef7' },
