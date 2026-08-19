@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useLeads } from '../hooks/useLeads'
 import { useAuth } from '../hooks/useAuth'
 import { STATUS_LEAD_CFG, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from '../lib/plataformas/types'
 import { PLATAFORMAS } from '../lib/plataformas/index'
@@ -327,15 +326,13 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
 }
 
 /* ── Página principal ─────────────────────────────────────────────────── */
-export default function Leads({ veiculos }) {
+export default function Leads({
+  veiculos, leads, loading, error,
+  saveLead, removeLead, moverLead,
+  registrarAtividade, buscarAtividades,
+}) {
   const { session } = useAuth()
   const userId      = session?.user?.id
-
-  const {
-    leads, loading, error,
-    saveLead, removeLead, moverLead,
-    registrarAtividade, buscarAtividades,
-  } = useLeads()
 
   const [leadAberto,    setLeadAberto]    = useState(null)
   const [filtroStatus,  setFiltroStatus]  = useState('todos')

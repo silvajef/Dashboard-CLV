@@ -68,7 +68,8 @@ export default function App() {
 
 function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile }) {
   const fleet = useFleet()
-  const { leads } = useLeads()
+  const leadsHook = useLeads()
+  const { leads } = leadsHook
   const jaCarregou = useRef(false)
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
@@ -200,7 +201,10 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}
                                                    filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}/>}
-        {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}/>}
+        {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}
+                                                   leads={leadsHook.leads} loading={leadsHook.loading} error={leadsHook.error}
+                                                   saveLead={leadsHook.saveLead} removeLead={leadsHook.removeLead} moverLead={leadsHook.moverLead}
+                                                   registrarAtividade={leadsHook.registrarAtividade} buscarAtividades={leadsHook.buscarAtividades}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
                                                    saveVendaRelacao={fleet.saveVendaRelacao} saveCliente={fleet.saveCliente} removeCliente={fleet.removeCliente}
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico} prestadores={fleet.prestadores}/>}
