@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { STATUS_LEAD_CFG, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from '../lib/plataformas/types'
 import { PLATAFORMAS } from '../lib/plataformas/index'
 import { getVendedoresAtivos, proximoResponsavel } from '../lib/api-leads'
+import { MoedaInput, TelefoneInput } from '../components/Inputs'
 import { C, fmtData, fmtR } from '../lib/constants'
 import FunilLeads from '../components/FunilLeads'
 
@@ -184,9 +185,8 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div>
-            <label style={s.label}>TELEFONE</label>
-            <input style={s.input} value={form.telefone || ''}
-              onChange={e => field('telefone', e.target.value)} placeholder='(00) 00000-0000' />
+            <TelefoneInput label='TELEFONE' value={form.telefone}
+              onChange={v => field('telefone', v)} />
           </div>
           <div>
             <label style={s.label}>E-MAIL</label>
@@ -227,10 +227,8 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
             </select>
           </div>
           <div>
-            <label style={s.label}>VALOR ESTIMADO</label>
-            <input style={s.input} type='number' value={form.valor_estimado ?? ''}
-              onChange={e => field('valor_estimado', e.target.value ? Number(e.target.value) : null)}
-              placeholder='0,00' />
+            <MoedaInput label='VALOR ESTIMADO' value={form.valor_estimado}
+              onChange={v => field('valor_estimado', v || null)} />
           </div>
         </div>
 
@@ -351,6 +349,16 @@ export default function Leads({
     })
   }
 
+  // Arrastar para "Perdido" abre o modal em vez de mover direto — motivo_perda
+  // é obrigatório e só é validado no Salvar do modal (handleSalvar).
+  function handleDrop(leadId, novoStatus) {
+    if (novoStatus === 'perdido') {
+      const lead = leads.find(l => String(l.id) === String(leadId))
+      if (lead) { setLeadAberto({ ...lead, status: 'perdido' }); return }
+    }
+    moverLead(leadId, novoStatus)
+  }
+
   if (loading) return (
     <div style={{ ...s.page, color: C.muted, fontSize: 13 }}>Carregando leads...</div>
   )
@@ -426,7 +434,7 @@ export default function Leads({
                 statusKey={col}
                 leads={leadsPorColuna[col] || []}
                 onLeadClick={setLeadAberto}
-                onDrop={moverLead}
+                onDrop={handleDrop}
                 vendedoresPorId={vendedoresPorId}
               />
             ))}

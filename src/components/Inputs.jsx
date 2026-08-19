@@ -139,6 +139,40 @@ export function DocInput({ label, value, onChange, required, style, placeholder 
   )
 }
 
+/* ── TelefoneInput — celular/fixo com máscara automática ───────── */
+/**
+ * Detecta celular (11 dígitos) ou fixo (10) e aplica máscara:
+ *   Fixo:    (00) 0000-0000
+ *   Celular: (00) 00000-0000
+ * onChange retorna o valor formatado (com máscara).
+ */
+export function TelefoneInput({ label, value, onChange, required, style, placeholder }) {
+  function aplicarMascara(raw) {
+    const digits = raw.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 10) {
+      return digits
+        .replace(/(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+    }
+    return digits
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+  }
+
+  return (
+    <FieldWrap label={label} required={required} style={style}>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={value || ''}
+        onChange={e => onChange(aplicarMascara(e.target.value))}
+        placeholder={placeholder || '(00) 00000-0000'}
+        style={{ ...baseStyle, fontFamily: "'JetBrains Mono',monospace" }}
+      />
+    </FieldWrap>
+  )
+}
+
 /* ── DateInput — DD/MM/AAAA com conversão automática ─────────── */
 /**
  * Exibe a data no formato DD/MM/AAAA para o usuário.
