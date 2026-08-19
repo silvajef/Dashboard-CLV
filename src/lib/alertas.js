@@ -5,12 +5,15 @@ export const ALERTAS_CONFIG = {
   DIAS_SEM_SERVICO_PADRAO:    30,
   DIAS_REPRECIFICAR_ATENCAO:  30,
   DIAS_REPRECIFICAR_CRITICO:  45,
+  SLA_LEAD_MEDIA_MIN:         15,
+  SLA_LEAD_ALTA_MIN:          60,
 }
 
 export const TIPO_ALERTA = {
-  SERVICO_PENDENTE: 'servico_pendente',
-  SEM_MANUTENCAO:   'sem_manutencao',
-  REPRECIFICAR:     'reprecificar',
+  SERVICO_PENDENTE:   'servico_pendente',
+  SEM_MANUTENCAO:     'sem_manutencao',
+  REPRECIFICAR:       'reprecificar',
+  LEAD_SEM_CONTATO:   'lead_sem_contato',
 }
 
 export const SEVERIDADE = {
@@ -155,12 +158,38 @@ function calcularAlertasReprecificacao(veiculos, hoje) {
 }
 
 /**
+ * Gera alertas de SLA para leads em 'novo' sem nenhuma atividade registrada.
+ * Dois estágios: SLA_LEAD_MEDIA_MIN (media) e SLA_LEAD_ALTA_MIN (alta, escala
+ * pro gestor). Espera `lead.atividades` como array (join de leads_atividades
+ * feito em getLeads(), ver api-leads.js).
+ */
+function calcularAlertasLeadSemContato(leads, hoje) {
+  return leads
+    .filter(l => l.status === 'novo' && !(l.atividades?.length) && l.created_at)
+    .flatMap(l => {
+      const minutos = Math.floor((hoje - new Date(l.created_at)) / 60_000)
+      if (minutos < ALERTAS_CONFIG.SLA_LEAD_MEDIA_MIN) return []
+      const critico = minutos >= ALERTAS_CONFIG.SLA_LEAD_ALTA_MIN
+      const tempo = minutos >= 60 ? `${Math.floor(minutos / 60)}h${minutos % 60}min` : `${minutos}min`
+      return [{
+        id: `lead_sem_contato_${l.id}`,
+        tipo: TIPO_ALERTA.LEAD_SEM_CONTATO,
+        severidade: critico ? SEVERIDADE.ALTA : SEVERIDADE.MEDIA,
+        titulo: `${l.nome} sem contato há ${tempo}`,
+        descricao: l.plataforma_origem ? `Origem: ${l.plataforma_origem}` : 'Origem: manual',
+        refTipo: 'lead',
+        refId: l.id,
+      }]
+    })
+}
+
+/**
  * Agrega todos os geradores em uma lista unificada, ordenada por severidade.
  * servicos deve ser um array flat: veiculos.flatMap(v => v.servicos || [])
  *
- * gerarTodosAlertas({ veiculos, servicos, vendasRelacao, metas }) → Alerta[]
+ * gerarTodosAlertas({ veiculos, servicos, vendasRelacao, metas, leads }) → Alerta[]
  */
-export function gerarTodosAlertas({ veiculos = [], servicos = [], vendasRelacao = [], metas = {}, hoje = new Date() }) {
+export function gerarTodosAlertas({ veiculos = [], servicos = [], vendasRelacao = [], metas = {}, leads = [], hoje = new Date() }) {
   const porSeveridade = { [SEVERIDADE.CRITICA]: 3, [SEVERIDADE.ALTA]: 2, [SEVERIDADE.MEDIA]: 1 }
   const alertasVeiculos = calcularVeiculosCriticos({ veiculos, servicos, metas, hoje })
     .map(v => ({
@@ -179,6 +208,7 @@ export function gerarTodosAlertas({ veiculos = [], servicos = [], vendasRelacao 
     ...calcularAlertasGarantia(vendasRelacao, veiculos),
     ...calcularAlertasCusto(veiculos, servicos, metas),
     ...calcularAlertasReprecificacao(veiculos, hoje),
+    ...calcularAlertasLeadSemContato(leads, hoje),
   ].sort((a, b) => (porSeveridade[b.severidade] || 0) - (porSeveridade[a.severidade] || 0))
 }
 

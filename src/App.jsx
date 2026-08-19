@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
+import { useLeads } from './hooks/useLeads'
 import { LoadingScreen, ErrorBanner } from './components/UI'
 import Sidebar from './components/Sidebar'
 import GlobalSearch from './components/GlobalSearch'
@@ -67,6 +68,7 @@ export default function App() {
 
 function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile }) {
   const fleet = useFleet()
+  const { leads } = useLeads()
   const jaCarregou = useRef(false)
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
@@ -77,8 +79,8 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
 
   const alertas = useMemo(() => {
     const servicos = fleet.veiculos.flatMap(v => v.servicos || [])
-    return gerarTodosAlertas({ veiculos: fleet.veiculos, servicos, vendasRelacao: fleet.vendasRelacao, metas: fleet.metas })
-  }, [fleet.veiculos, fleet.vendasRelacao, fleet.metas])
+    return gerarTodosAlertas({ veiculos: fleet.veiculos, servicos, vendasRelacao: fleet.vendasRelacao, metas: fleet.metas, leads })
+  }, [fleet.veiculos, fleet.vendasRelacao, fleet.metas, leads])
 
   // ⌘K / Ctrl+K global — deve ficar aqui, antes de qualquer early return.
   // Vendedor não tem busca global (acessa só estoque).

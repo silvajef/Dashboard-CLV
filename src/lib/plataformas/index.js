@@ -4,7 +4,7 @@
  * Ao adicionar um canal (ex.: WhatsApp), inclua aqui { slug, nome, emoji, cor }.
  */
 
-/** @typedef {'mercadolivre'|'olx'|'icarros'|'mobiauto'|'napista'} SlugPlataforma */
+/** @typedef {'mercadolivre'|'olx'|'icarros'|'mobiauto'|'napista'|'whatsapp'|'indicacao'} SlugPlataforma */
 
 /**
  * @typedef {Object} CanalLead
@@ -16,6 +16,8 @@
 
 /** @type {CanalLead[]} */
 export const PLATAFORMAS = [
+  { slug: 'whatsapp',     nome: 'WhatsApp',      emoji: '💬', cor: '#25d366' },
+  { slug: 'indicacao',    nome: 'Indicação',     emoji: '🤝', cor: '#a78bfa' },
   { slug: 'mercadolivre', nome: 'Mercado Livre', emoji: '🛒', cor: '#ffe600' },
   { slug: 'olx',          nome: 'OLX',           emoji: '🔶', cor: '#f28500' },
   { slug: 'icarros',      nome: 'iCarros',        emoji: '🚗', cor: '#e63027' },

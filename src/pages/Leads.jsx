@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLeads } from '../hooks/useLeads'
 import { useAuth } from '../hooks/useAuth'
-import { STATUS_LEAD_CFG, TIPOS_ATIVIDADE } from '../lib/plataformas/types'
+import { STATUS_LEAD_CFG, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from '../lib/plataformas/types'
 import { PLATAFORMAS } from '../lib/plataformas/index'
-import { C, fmtData } from '../lib/constants'
+import { getVendedoresAtivos, proximoResponsavel } from '../lib/api-leads'
+import { C, fmtData, fmtR } from '../lib/constants'
 import FunilLeads from '../components/FunilLeads'
 
 /* ── Estilos base ─────────────────────────────────────────────────────── */
@@ -29,12 +30,12 @@ const s = {
   label:     { fontSize: 11, color: C.muted, fontWeight: 700, display: 'block', marginBottom: 4 },
 }
 
-const COLUNAS_PIPELINE = ['novo','contato','visita','proposta','ganho','perdido']
+const COLUNAS_PIPELINE = ['novo','contato','qualificado','visita','proposta','negociacao','ganho','perdido']
 
 const PLATAFORMA_EMOJI = Object.fromEntries(PLATAFORMAS.map(p => [p.slug, p.emoji]))
 
 /* ── Cartão de lead no kanban ─────────────────────────────────────────── */
-function LeadCard({ lead, onClick }) {
+function LeadCard({ lead, onClick, vendedorNome }) {
   const veiculo = lead.veiculo
   const veiculoLabel = veiculo
     ? `${veiculo.marca_nome || ''} ${veiculo.modelo_nome || veiculo.modelo || ''} ${veiculo.ano_modelo || ''}`.trim()
@@ -72,6 +73,12 @@ function LeadCard({ lead, onClick }) {
       {veiculoLabel && (
         <p style={{ margin: '0 0 2px', fontSize: 11, color: C.muted }}>🚛 {veiculoLabel}</p>
       )}
+      {!veiculo && lead.veiculo_desejado_texto && (
+        <p style={{ margin: '0 0 2px', fontSize: 11, color: C.faint }}>🔍 {lead.veiculo_desejado_texto}</p>
+      )}
+      {lead.valor_estimado > 0 && (
+        <p style={{ margin: '0 0 2px', fontSize: 11, color: C.green, fontWeight: 700 }}>{fmtR(lead.valor_estimado)}</p>
+      )}
       {lead.mensagem && (
         <p style={{ margin: '4px 0 0', fontSize: 11, color: C.muted,
                     overflow: 'hidden', display: '-webkit-box',
@@ -87,13 +94,16 @@ function LeadCard({ lead, onClick }) {
           </span>
         )}
         <span style={{ fontSize: 10, color: C.faint }}>{fmtData(lead.created_at)}</span>
+        {vendedorNome && (
+          <span style={{ fontSize: 10, color: C.muted, marginLeft: 'auto' }}>👤 {vendedorNome}</span>
+        )}
       </div>
     </div>
   )
 }
 
 /* ── Coluna do kanban ────────────────────────────────────────────────── */
-function ColunaKanban({ statusKey, leads, onLeadClick, onDrop }) {
+function ColunaKanban({ statusKey, leads, onLeadClick, onDrop, vendedoresPorId }) {
   const cfg = STATUS_LEAD_CFG[statusKey]
 
   function handleDragOver(e) { e.preventDefault() }
@@ -122,7 +132,7 @@ function ColunaKanban({ statusKey, leads, onLeadClick, onDrop }) {
           draggable
           onDragStart={e => e.dataTransfer.setData('leadId', lead.id)}
         >
-          <LeadCard lead={lead} onClick={() => onLeadClick(lead)} />
+          <LeadCard lead={lead} onClick={() => onLeadClick(lead)} vendedorNome={vendedoresPorId[lead.responsavel_id]} />
         </div>
       ))}
     </div>
@@ -130,7 +140,7 @@ function ColunaKanban({ statusKey, leads, onLeadClick, onDrop }) {
 }
 
 /* ── Modal: detalhe do lead + atividades ──────────────────────────────── */
-function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, buscarAtividades, userId }) {
+function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, buscarAtividades, userId, vendedores }) {
   const [form,       setForm]       = useState({ ...lead })
   const [atividades, setAtividades] = useState([])
   const [novaAtiv,   setNovaAtiv]   = useState({ tipo: 'nota', descricao: '' })
@@ -145,6 +155,7 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
 
   async function handleSalvar() {
     if (!form.nome?.trim()) return setErro('Nome obrigatório.')
+    if (form.status === 'perdido' && !form.motivo_perda) return setErro('Motivo da perda obrigatório.')
     setErro(''); setSalvando(true)
     try { await onSalvar(form); onFechar() }
     catch (e) { setErro(e.message) }
@@ -206,6 +217,43 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
             </select>
           </div>
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div>
+            <label style={s.label}>RESPONSÁVEL</label>
+            <select style={s.input} value={form.responsavel_id || ''}
+              onChange={e => field('responsavel_id', e.target.value || null)}>
+              <option value=''>Sem responsável</option>
+              {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={s.label}>VALOR ESTIMADO</label>
+            <input style={s.input} type='number' value={form.valor_estimado ?? ''}
+              onChange={e => field('valor_estimado', e.target.value ? Number(e.target.value) : null)}
+              placeholder='0,00' />
+          </div>
+        </div>
+
+        {form.status === 'perdido' && (
+          <div style={{ marginBottom: 10 }}>
+            <label style={s.label}>MOTIVO DA PERDA *</label>
+            <select style={s.input} value={form.motivo_perda || ''}
+              onChange={e => field('motivo_perda', e.target.value)}>
+              <option value=''>Selecione...</option>
+              {MOTIVOS_PERDA.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+        )}
+
+        {!form.veiculo_id && (
+          <div style={{ marginBottom: 10 }}>
+            <label style={s.label}>VEÍCULO DESEJADO (fora do estoque atual)</label>
+            <input style={s.input} value={form.veiculo_desejado_texto || ''}
+              onChange={e => field('veiculo_desejado_texto', e.target.value)}
+              placeholder='Ex: Corolla 2022 automático' />
+          </div>
+        )}
 
         {form.mensagem && (
           <div style={{ marginBottom: 10 }}>
@@ -293,6 +341,18 @@ export default function Leads({ veiculos }) {
   const [filtroStatus,  setFiltroStatus]  = useState('todos')
   const [busca,         setBusca]         = useState('')
   const [visao,         setVisao]         = useState('kanban')
+  const [vendedores,    setVendedores]    = useState([])
+
+  useEffect(() => { getVendedoresAtivos().then(setVendedores).catch(() => {}) }, [])
+
+  const vendedoresPorId = Object.fromEntries(vendedores.map(v => [v.id, v.nome]))
+
+  function abrirNovoLead() {
+    setLeadAberto({
+      nome: '', status: 'novo', plataforma_origem: 'manual',
+      responsavel_id: proximoResponsavel(vendedores, leads),
+    })
+  }
 
   if (loading) return (
     <div style={{ ...s.page, color: C.muted, fontSize: 13 }}>Carregando leads...</div>
@@ -332,8 +392,7 @@ export default function Leads({ veiculos }) {
               </button>
             ))}
           </div>
-          <button style={{ ...s.btn, ...s.btnPrimary }}
-            onClick={() => setLeadAberto({ nome: '', status: 'novo', plataforma_origem: 'manual' })}>
+          <button style={{ ...s.btn, ...s.btnPrimary }} onClick={abrirNovoLead}>
             + Novo Lead
           </button>
         </div>
@@ -371,6 +430,7 @@ export default function Leads({ veiculos }) {
                 leads={leadsPorColuna[col] || []}
                 onLeadClick={setLeadAberto}
                 onDrop={moverLead}
+                vendedoresPorId={vendedoresPorId}
               />
             ))}
           </div>
@@ -386,6 +446,7 @@ export default function Leads({ veiculos }) {
           registrarAtividade={registrarAtividade}
           buscarAtividades={buscarAtividades}
           userId={userId}
+          vendedores={vendedores}
         />
       )}
     </div>
