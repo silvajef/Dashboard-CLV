@@ -158,14 +158,17 @@ function calcularAlertasReprecificacao(veiculos, hoje) {
 }
 
 /**
- * Gera alertas de SLA para leads em 'novo' sem nenhuma atividade registrada.
- * Dois estágios: SLA_LEAD_MEDIA_MIN (media) e SLA_LEAD_ALTA_MIN (alta, escala
- * pro gestor). Espera `lead.atividades` como array (join de leads_atividades
- * feito em getLeads(), ver api-leads.js).
+ * Gera alertas de SLA para leads em 'novo' sem nenhum CONTATO HUMANO
+ * registrado. Dois estágios: SLA_LEAD_MEDIA_MIN (media) e SLA_LEAD_ALTA_MIN
+ * (alta, escala pro gestor). Espera `lead.atividades` como array (join de
+ * leads_atividades feito em getLeads(), ver api-leads.js) incluindo
+ * `usuario_id` — atividade do bot de WhatsApp (usuario_id null) não conta
+ * como contato: o gestor precisa continuar vendo que nenhum vendedor tocou
+ * o lead, mesmo que o bot já esteja triando.
  */
 function calcularAlertasLeadSemContato(leads, hoje) {
   return leads
-    .filter(l => l.status === 'novo' && !(l.atividades?.length) && l.created_at)
+    .filter(l => l.status === 'novo' && !l.atividades?.some(a => a.usuario_id) && l.created_at)
     .flatMap(l => {
       const minutos = Math.floor((hoje - new Date(l.created_at)) / 60_000)
       if (minutos < ALERTAS_CONFIG.SLA_LEAD_MEDIA_MIN) return []

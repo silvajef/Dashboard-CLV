@@ -15,7 +15,7 @@ const CAMPOS_PII = [
   ['email_encrypted', 'email'],
 ]
 
-async function chamarApiPii(rota, body) {
+async function chamarApiAutenticada(rota, body) {
   const { data: sessao } = await supabase.auth.getSession()
   const token = sessao?.session?.access_token
   const res = await fetch(`/api/${rota}`, {
@@ -31,7 +31,7 @@ async function revelarLote(itens) {
   const valores = []
   for (let i = 0; i < itens.length; i += LOTE_REVELAR) {
     const fatia = itens.slice(i, i + LOTE_REVELAR)
-    const resultado = await chamarApiPii('leads-pii-revelar', { itens: fatia })
+    const resultado = await chamarApiAutenticada('leads-pii-revelar', { itens: fatia })
     valores.push(...resultado.valores)
   }
   return valores
@@ -62,7 +62,10 @@ async function decifrarLeads(leads) {
 export async function getLeads() {
   const { data, error } = await supabase
     .from('leads')
-    .select('*, veiculo:veiculos(id, placa, modelo, marca_nome, modelo_nome, ano_modelo), atividades:leads_atividades(id, tipo, created_at)')
+    .select(`*,
+      veiculo:veiculos(id, placa, modelo, marca_nome, modelo_nome, ano_modelo),
+      atividades:leads_atividades(id, tipo, created_at, usuario_id),
+      whatsapp_thread:whatsapp_threads(bot_estado, bot_pergunta_atual, ultima_mensagem_recebida_em)`)
     .order('created_at', { ascending: false })
   if (error) throw error
   return decifrarLeads(data || [])
@@ -73,7 +76,7 @@ export async function upsertLead(lead) {
   payload.updated_at = new Date().toISOString()
 
   if (nome !== undefined || telefone !== undefined || email !== undefined) {
-    Object.assign(payload, await chamarApiPii('leads-pii-cifrar', { nome, telefone, email }))
+    Object.assign(payload, await chamarApiAutenticada('leads-pii-cifrar', { nome, telefone, email }))
   }
 
   if (id) {
@@ -115,19 +118,6 @@ export async function getVendedoresAtivos() {
   return data || []
 }
 
-/**
- * Escolhe o vendedor com menos leads ativos (não ganho/perdido) — round-robin
- * por carga, sem precisar de estado/ponteiro persistido.
- */
-export function proximoResponsavel(vendedores, leadsAtuais) {
-  if (!vendedores?.length) return null
-  const carga = Object.fromEntries(vendedores.map(v => [v.id, 0]))
-  leadsAtuais
-    .filter(l => !['ganho', 'perdido'].includes(l.status) && carga[l.responsavel_id] !== undefined)
-    .forEach(l => { carga[l.responsavel_id] += 1 })
-  return vendedores.reduce((menor, v) => carga[v.id] < carga[menor.id] ? v : menor, vendedores[0]).id
-}
-
 /* ── Atividades ───────────────────────────────────────────────────────── */
 
 export async function getAtividades(leadId) {
@@ -148,4 +138,11 @@ export async function addAtividade(atividade) {
     .single()
   if (error) throw error
   return data
+}
+
+/* ── WhatsApp ─────────────────────────────────────────────────────────── */
+
+/** Envia uma resposta humana pelo WhatsApp do lead (via api/whatsapp-send.js). */
+export async function addWhatsappReply(leadId, texto) {
+  return chamarApiAutenticada('whatsapp-send', { leadId, texto })
 }

@@ -1,5 +1,8 @@
 {
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/" }
-  ]
+  ],
+  "functions": {
+    "api/whatsapp-webhook.js": { "maxDuration": 10 }
+  }
 }

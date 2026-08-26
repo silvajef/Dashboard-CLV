@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { STATUS_LEAD_CFG, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from '../lib/plataformas/types'
 import { PLATAFORMAS } from '../lib/plataformas/index'
-import { getVendedoresAtivos, proximoResponsavel } from '../lib/api-leads'
+import { getVendedoresAtivos, addWhatsappReply } from '../lib/api-leads'
+import { proximoResponsavel } from '../lib/roundRobin'
 import { MoedaInput, TelefoneInput } from '../components/Inputs'
 import { C, fmtData, fmtR } from '../lib/constants'
 import FunilLeads from '../components/FunilLeads'
@@ -146,12 +147,30 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
   const [novaAtiv,   setNovaAtiv]   = useState({ tipo: 'nota', descricao: '' })
   const [salvando,   setSalvando]   = useState(false)
   const [erro,       setErro]       = useState('')
+  const [respWhats,  setRespWhats]  = useState('')
+  const [enviandoWhats, setEnviandoWhats] = useState(false)
 
   useState(() => {
     if (lead.id) buscarAtividades(lead.id).then(setAtividades)
   }, [lead.id])
 
   function field(key, val) { setForm(f => ({ ...f, [key]: val })) }
+
+  const whatsThread = lead.whatsapp_thread?.[0]
+  const botAtivo = lead.plataforma_origem === 'whatsapp' && whatsThread?.bot_estado === 'coletando'
+  const podeResponderWhats = lead.plataforma_origem === 'whatsapp' &&
+    ['aguardando_humano', 'concluido'].includes(whatsThread?.bot_estado)
+
+  async function handleEnviarWhatsapp() {
+    if (!respWhats.trim()) return
+    setEnviandoWhats(true); setErro('')
+    try {
+      await addWhatsappReply(lead.id, respWhats.trim())
+      setAtividades(await buscarAtividades(lead.id))
+      setRespWhats('')
+    } catch (e) { setErro(e.message) }
+    finally { setEnviandoWhats(false) }
+  }
 
   async function handleSalvar() {
     if (!form.nome?.trim()) return setErro('Nome obrigatório.')
@@ -178,6 +197,18 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
         </h3>
 
         {erro && <div style={s.erro}>{erro}</div>}
+
+        {whatsThread && (
+          <div style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                         background: botAtivo ? `${C.amber}22` : `${C.blue}22`,
+                         color: botAtivo ? C.amber : C.blue, display: 'inline-block', marginBottom: 10 }}>
+            {botAtivo
+              ? `🤖 Bot em qualificação — pergunta ${whatsThread.bot_pergunta_atual}/3`
+              : whatsThread.bot_estado === 'aguardando_humano'
+                ? '👤 Bot entregou — aguardando atendimento humano'
+                : '✅ Qualificação concluída'}
+          </div>
+        )}
 
         <label style={s.label}>NOME *</label>
         <input style={{ ...s.input, marginBottom: 10 }} value={form.nome || ''}
@@ -299,6 +330,25 @@ function ModalLead({ lead, onSalvar, onExcluir, onFechar, registrarAtividade, bu
               <button style={{ ...s.btn, ...s.btnGhost, flexShrink: 0 }}
                 onClick={handleAddAtividade}>+</button>
             </div>
+
+            {podeResponderWhats && (
+              <>
+                <p style={{ ...s.secao, margin: '0 0 8px' }}>Responder pelo WhatsApp</p>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+                  <input style={{ ...s.input, flex: 1 }}
+                    value={respWhats}
+                    onChange={e => setRespWhats(e.target.value)}
+                    placeholder='Digite a resposta pro lead...'
+                    onKeyDown={e => e.key === 'Enter' && handleEnviarWhatsapp()}
+                    disabled={enviandoWhats}
+                  />
+                  <button style={{ ...s.btn, ...s.btnPrimary, flexShrink: 0 }}
+                    onClick={handleEnviarWhatsapp} disabled={enviandoWhats || !respWhats.trim()}>
+                    {enviandoWhats ? '...' : 'Enviar'}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         )}
 

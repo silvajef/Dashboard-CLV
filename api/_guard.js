@@ -4,12 +4,7 @@
  * autenticar o Bearer token antes de qualquer leitura/escrita — ver skill
  * api-guard.
  */
-import { createClient } from '@supabase/supabase-js'
-
-const admin = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-)
+import { admin } from './_supabaseAdmin.js'
 
 const JANELA_MS = 60_000
 const LIMITE_POR_JANELA = 30

@@ -6,17 +6,10 @@
  */
 import { guard } from './_guard.js'
 import { encrypt, hashParaLookup } from './_crypto.js'
+import { normalizarTelefone } from './_telefone.js'
+import { CONTEXTO_PII_LEAD as CONTEXTO } from './_pii-contexto.js'
 
 const LIMITE_TAMANHO = { nome: 200, telefone: 20, email: 254 }
-
-/** AAD do GCM — amarra o ciphertext ao campo, ver api/_crypto.js. */
-const CONTEXTO = { nome: 'lead:nome', telefone: 'lead:telefone', email: 'lead:email' }
-
-/** Normaliza telefone para E.164-ish antes do hash (dedupe estável). */
-function normalizarTelefone(telefone) {
-  const digitos = String(telefone).replace(/\D/g, '')
-  return digitos.startsWith('55') ? `+${digitos}` : `+55${digitos}`
-}
 
 /** @returns {{ valor: object }|{ erro: string }} */
 function validar(body) {

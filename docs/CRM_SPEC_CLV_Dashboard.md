@@ -419,6 +419,36 @@ Itens que ficaram fora desta fase (não pedidos, escopo maior):
   produção, continuam legíveis pelas colunas de texto claro até rodar um
   script de backfill — fora do SQL, precisa de `ENCRYPTION_KEY`).
 
+**Fase 2 — concluída em 2026-08-21** (provedor Meta Cloud API, escopo:
+triagem/qualificação estruturada, não agente conversacional completo):
+
+- Bot faz 3 perguntas fixas (veículo de interesse, orçamento, prazo) e usa
+  Claude Haiku 4.5 (`output_config.format: json_schema`) só pra EXTRAIR a
+  resposta em campos estruturados — nunca gera texto livre enviado ao lead.
+  Handoff automático pro vendedor (round-robin) ao concluir, se o lead pedir
+  humano, ou após 2 respostas não compreendidas.
+- `api/whatsapp-webhook.js` processa de forma **síncrona** (não ack-e-
+  processa-depois) — decisão deliberada: o projeto está no plano Hobby da
+  Vercel (timeout de 10s) e não existe infra de fila/background job; o
+  risco aceito é perder uma mensagem pontual em caso de timeout (a Meta
+  reentrega, mas sem retry automático confiável no nosso lado). Se o
+  volume crescer, upgrade pra Vercel Pro remove esse risco sem redesenho.
+- SLA (`lead_sem_contato`) só limpa com atividade **humana**
+  (`usuario_id` preenchido) — o bot conversando sozinho não silencia o
+  alerta, senão o gestor nunca saberia que nenhum vendedor tocou o lead.
+- Correções de segurança feitas via revisão (`security-reviewer`) antes de
+  aplicar: `getLeads()` não expõe mais `numero_whatsapp` em claro pro
+  browser (join desnecessário vazava PII fora do padrão cifrado); todas as
+  transições de estado do bot em `whatsapp_threads` usam compare-and-swap
+  (evita perguntas duplicadas/fora de ordem em mensagens quase simultâneas);
+  `leads.telefone_hash` ganhou índice único (fecha corrida de criação de
+  lead duplicado); `normalizarTelefone()` tinha um bug real pra DDD 55
+  (confundia com o código de país do Brasil) — agora distingue por tamanho
+  do número, não só pelo prefixo.
+- Envio de template fora da janela de 24h **não implementado** — endpoint
+  retorna 400; formato exato dos componentes do template fica pra quando
+  isso for necessário.
+
 Abaixo, o plano original (referência):
 
 **Fase 1 (agora)** — sem dependência externa, roda 100% com o que já existe:

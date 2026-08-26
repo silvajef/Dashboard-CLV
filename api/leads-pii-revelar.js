@@ -10,9 +10,9 @@
  */
 import { guard } from './_guard.js'
 import { decrypt } from './_crypto.js'
+import { CONTEXTO_PII_LEAD as CONTEXTO } from './_pii-contexto.js'
 
 const LIMITE_ITENS = 150
-const CONTEXTO = { nome: 'lead:nome', telefone: 'lead:telefone', email: 'lead:email' }
 
 /** @returns {{ valor: {blob: string, campo: string}[] }|{ erro: string }} */
 function validar(body) {
