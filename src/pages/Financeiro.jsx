@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react'
 import { useBreakpoint } from '../lib/responsive'
 import LineTracker from '../components/charts/LineTracker'
-import { C, fmtR, fmtPct, custoV, custoFixos } from '../lib/constants'
+import { C, fmtR, fmtPct, resultadoVendas } from '../lib/constants'
+import AvisoVendasIncompletas from '../components/AvisoVendasIncompletas'
 
 // ── Utilitários de data ────────────────────────────────────────────────────────
 
@@ -39,17 +40,6 @@ function filtrarPeriodo(veiculos, periodo) {
     const dvISO = normDate(v.data_venda)
     return dvISO && dvISO >= cutoffISO
   })
-}
-
-function calcDRE(vendidos) {
-  const receita    = vendidos.reduce((s, v) => s + (v.valor_venda  || 0), 0)
-  const aquisicao  = vendidos.reduce((s, v) => s + (v.valor_compra || 0), 0)
-  const manutencao = vendidos.reduce((s, v) => s + custoV(v), 0)
-  const fixos      = vendidos.reduce((s, v) => s + custoFixos(v), 0)
-  const custo      = aquisicao + manutencao + fixos
-  const lucro      = receita - custo
-  const margem     = receita > 0 ? (lucro / receita) * 100 : 0
-  return { receita, aquisicao, manutencao, fixos, custo, lucro, margem }
 }
 
 function calcFluxo(veiculos, nMeses = 6) {
@@ -208,7 +198,7 @@ function SecaoDRE({ dre, metas, periodo }) {
     <>
       <p style={s.secao}>DRE Simplificado — {periodo === 'total' ? 'período total' : `últimos ${periodo} dias`}</p>
       <div style={{ ...s.card, maxWidth: 480, marginBottom: 24 }}>
-        <LinhaDRE label="RECEITA BRUTA"          value={fmtR(dre.receita)}    color={C.text}  bold/>
+        <LinhaDRE label={`RECEITA (${dre.consideradas} vendas com custo)`} value={fmtR(dre.receita)} color={C.text} bold/>
         <LinhaDRE label="(-) Custo de Aquisição" value={fmtR(dre.aquisicao)}  color={C.red}   indent/>
         <LinhaDRE label="(-) Manutenção"         value={fmtR(dre.manutencao)} color={C.amber} indent/>
         <LinhaDRE label="(-) Custos Fixos"       value={fmtR(dre.fixos)}      color={C.amber} indent/>
@@ -247,13 +237,15 @@ function SecaoProjecao({ proj, isMobile }) {
 // ── Componente principal ────────────────────────────────────────────────────────
 
 /** Módulo Financeiro — DRE + Fluxo de Caixa mensal + Projeção. */
-export default function Financeiro({ veiculos, metas }) {
+export default function Financeiro({ veiculos, metas, onCorrigirVeiculo }) {
   const [periodo, setPeriodo] = useState('30')
   const { isMobile }          = useBreakpoint()
 
   const vPeriodo = useMemo(() => filtrarPeriodo(veiculos, periodo), [veiculos, periodo])
   const vendidos = useMemo(() => vPeriodo.filter(v => v.status === 'vendido'), [vPeriodo])
-  const dre      = useMemo(() => calcDRE(vendidos), [vendidos])
+  // DRE só com vendas que têm custo de aquisição — ver resultadoVendas.
+  const dre      = useMemo(() => resultadoVendas(vendidos), [vendidos])
+  const receitaTotal = vendidos.reduce((s, v) => s + (v.valor_venda || 0), 0)
   const fluxo    = useMemo(() => calcFluxo(veiculos, 6), [veiculos])
   const proj     = useMemo(() => calcProjecao(fluxo), [fluxo])
 
@@ -268,14 +260,15 @@ export default function Financeiro({ veiculos, metas }) {
   return (
     <div style={s.page}>
       <HeaderFinanceiro periodo={periodo} setPeriodo={setPeriodo}/>
+      <AvisoVendasIncompletas rv={dre} onCorrigir={onCorrigirVeiculo}/>
 
       <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 10, marginBottom: 24 }}>
-        <CardKPI label="Receita Bruta" value={fmtR(dre.receita)} color={C.green}
+        <CardKPI label="Receita Bruta" value={fmtR(receitaTotal)} color={C.green}
           sub={`${vendidos.length} venda${vendidos.length !== 1 ? 's' : ''}`}/>
         <CardKPI label="Custo Total"   value={fmtR(dre.custo)}   color={C.red}
           sub="aquisição + manutenção + fixos"/>
         <CardKPI label="Lucro Bruto"   value={fmtR(dre.lucro)}   color={dre.lucro >= 0 ? C.cyan : C.red}
-          sub={fmtPct(dre.margem) + ' de margem'}/>
+          sub={`${fmtPct(dre.margem)} de margem · ${dre.consideradas} de ${vendidos.length} vendas`}/>
         <CardKPI label="Projeção 30d"  value={proj ? fmtR(proj.saldo) : '—'}
           color={proj && proj.saldo >= 0 ? C.green : C.red} sub="saldo médio dos últimos 3 meses"/>
       </div>

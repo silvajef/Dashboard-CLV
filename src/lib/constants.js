@@ -13,6 +13,18 @@ export const TIPOS_MANUT = [
 ]
 export const COMBUSTIVEIS = ['Diesel','Flex','Gasolina','Etanol','GNV','Elétrico','Híbrido']
 
+/**
+ * normalizarCombustivel — devolve a grafia canônica de COMBUSTIVEIS, sem
+ * diferenciar maiúsculas. O ModalVeiculo gravava 'DIESEL'/'FLEX' (FIPE em
+ * caixa alta) enquanto o select oferece 'Diesel'/'Flex' — o valor não casava
+ * e a edição mostrava o campo vazio. Valor fora da lista volta como veio.
+ * Ex.: normalizarCombustivel('FLEX') → 'Flex'
+ */
+export const normalizarCombustivel = valor => {
+  const alvo = (valor || '').toLowerCase()
+  return COMBUSTIVEIS.find(c => c.toLowerCase() === alvo) || valor || ''
+}
+
 export const STATUS_VEICULO_CFG = {
   pendente:   { label: 'Revisão Pendente', color: '#f59e0b', icon: 'clock'       },
   manutencao: { label: 'Em Manutenção',    color: '#4f8ef7', icon: 'wrench'      },
@@ -178,6 +190,63 @@ export const custoFixos = v => {
 /** custoTotal — custo de compra + manutenção + custos fixos */
 export const custoTotal = v =>
   (v.valor_compra || 0) + custoV(v) + custoFixos(v)
+
+/**
+ * calcPrecoSugerido — preço que atinge a margem mínima sobre o custo total.
+ * Null sem valor de compra: sem ele o "custo" é só manutenção e o preço sai
+ * irrealmente baixo (ex.: R$ 16 mil sugerido para um veículo de FIPE R$ 84 mil).
+ * Ex.: calcPrecoSugerido({ valor_compra: 80000, status: 'em_venda' }, 10) → 88000
+ */
+export const calcPrecoSugerido = (v, margemMin) => {
+  if (!(margemMin > 0) || !(v.valor_compra > 0) || v.status === 'vendido') return null
+  return Math.round(custoTotal(v) * (1 + margemMin / 100))
+}
+
+/**
+ * temCustoAquisicao — o veículo tem valor de compra informado. Zero conta
+ * como "não informado": o ModalVeiculo grava 0 quando o campo fica vazio,
+ * então no banco os dois casos são indistinguíveis.
+ * Ex.: temCustoAquisicao({ valor_compra: 0 }) → false
+ */
+export const temCustoAquisicao = v => (v?.valor_compra || 0) > 0
+
+/** fmtValorCompra — valor de compra formatado, ou "Não informado" em vez de "R$ 0". */
+export const fmtValorCompra = v => temCustoAquisicao(v) ? fmtR(v.valor_compra) : 'Não informado'
+
+/**
+ * lucroBrutoVeiculo — venda − compra − manutenção − custos fixos (antes de
+ * comissão e despesas da loja). Null sem custo de aquisição: o "lucro"
+ * sairia igual ao valor de venda inteiro.
+ * Ex.: lucroBrutoVeiculo({ valor_venda: 100000, valor_compra: 80000 }) → 20000
+ */
+export const lucroBrutoVeiculo = v =>
+  temCustoAquisicao(v) ? (v.valor_venda || 0) - custoTotal(v) : null
+
+/**
+ * resultadoVendas — receita, custos e lucro bruto só das vendas com custo de
+ * aquisição; as demais são contadas em `incompletas` para a UI avisar em vez
+ * de inflar lucro, margem e ROI.
+ * Ex.: resultadoVendas([{ valor_venda: 100, valor_compra: 80 }, { valor_venda: 50 }])
+ *      → { receita: 100, lucro: 20, margem: 20, consideradas: 1, incompletas: 1, semCusto: [{ valor_venda: 50 }], … }
+ */
+export function resultadoVendas(vendidos) {
+  const completas  = vendidos.filter(temCustoAquisicao)
+  const soma       = fn => completas.reduce((s, v) => s + fn(v), 0)
+  const receita    = soma(v => v.valor_venda || 0)
+  const aquisicao  = soma(v => v.valor_compra)
+  const manutencao = soma(custoV)
+  const fixos      = soma(custoFixos)
+  const custo      = aquisicao + manutencao + fixos
+  const lucro      = receita - custo
+  return {
+    receita, aquisicao, manutencao, fixos, custo, lucro,
+    margem: receita > 0 ? (lucro / receita) * 100 : 0,
+    roi:    aquisicao > 0 ? (lucro / aquisicao) * 100 : 0,
+    consideradas: completas.length,
+    incompletas:  vendidos.length - completas.length,
+    semCusto:     vendidos.filter(v => !temCustoAquisicao(v)),
+  }
+}
 
 /** custoOperacional — manutenção + custos fixos (sem o valor de compra) */
 export const custoOperacional = v => custoV(v) + custoFixos(v)

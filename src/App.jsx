@@ -74,6 +74,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
   const [abrirVeiculoId,        setAbrirVeiculoId]        = useState(null)
+  const [editarVeiculoId,       setEditarVeiculoId]       = useState(null)
   const [filtroInicialVeiculos, setFiltroInicialVeiculos] = useState(null)
   const [searchOpen,            setSearchOpen]            = useState(false)
   const [alertasAberto,         setAlertasAberto]         = useState(false)
@@ -100,6 +101,12 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
   // Navegação direta para o processo de um veículo a partir do KPI
   const irParaProcesso = (veiculoId) => {
     setAbrirVeiculoId(veiculoId)
+    setAba('veiculos')
+  }
+
+  // Atalho dos avisos de "venda sem valor de compra": abre a edição do veículo
+  const irParaCorrigirVeiculo = (veiculoId) => {
+    setEditarVeiculoId(veiculoId)
     setAba('veiculos')
   }
 
@@ -194,12 +201,13 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
         {fleet.error && <ErrorBanner message={fleet.error} onRetry={fleet.reload}/>}
 
         <div key={abaAtual} style={{ animation:'fadeInUp 0.22s cubic-bezier(0.4,0,0.2,1)' }}>
-        {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso} onIrParaEstoque={irParaEstoqueComFiltro}/>}
+        {abaAtual==='dashboard'   && <KPIs        veiculos={fleet.veiculos} metas={fleet.metas} saveMetas={fleet.saveMetas} processos={fleet.processos} onVerProcesso={irParaProcesso} onIrParaEstoque={irParaEstoqueComFiltro} onCorrigirVeiculo={irParaCorrigirVeiculo}/>}
         {abaAtual==='veiculos'    && <Veiculos     veiculos={fleet.veiculos} prestadores={fleet.prestadores} processos={fleet.processos} metas={fleet.metas}
                                                    saveVeiculo={fleet.saveVeiculo} removeVeiculo={fleet.removeVeiculo}
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico}
                                                    saveProcesso={fleet.saveProcesso} concluirProcesso={fleet.concluirProcesso} cancelarProcesso={fleet.cancelarProcesso}
                                                    abrirVeiculoId={abrirVeiculoId} onAbrirVeiculoHandled={() => setAbrirVeiculoId(null)}
+                                                   editarVeiculoId={editarVeiculoId} onEditarVeiculoHandled={() => setEditarVeiculoId(null)}
                                                    filtroInicial={filtroInicialVeiculos} onFiltroInicialHandled={() => setFiltroInicialVeiculos(null)}/>}
         {abaAtual==='leads'       && <Leads        veiculos={fleet.veiculos}
                                                    leads={leadsHook.leads} loading={leadsHook.loading} error={leadsHook.error}
@@ -207,10 +215,11 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    registrarAtividade={leadsHook.registrarAtividade} buscarAtividades={leadsHook.buscarAtividades}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
                                                    saveVendaRelacao={fleet.saveVendaRelacao} saveCliente={fleet.saveCliente} removeCliente={fleet.removeCliente}
-                                                   saveServico={fleet.saveServico} removeServico={fleet.removeServico} prestadores={fleet.prestadores}/>}
+                                                   saveServico={fleet.saveServico} removeServico={fleet.removeServico} prestadores={fleet.prestadores}
+                                                   onCorrigirVeiculo={irParaCorrigirVeiculo}/>}
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
-        {abaAtual==='financeiro'    && <Financeiro   veiculos={fleet.veiculos} metas={fleet.metas}/>}
+        {abaAtual==='financeiro'    && <Financeiro   veiculos={fleet.veiculos} metas={fleet.metas} onCorrigirVeiculo={irParaCorrigirVeiculo}/>}
         {abaAtual==='comissoes'     && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil}/>}
         {abaAtual==='estoque-vendedor' && <EstoqueVendedor veiculos={fleet.veiculos}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
