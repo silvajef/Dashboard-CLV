@@ -3,6 +3,13 @@
  * v3.8 — valor_compra (era valor_estoque), custos_fixos, vendedor, comissao_pct
  */
 import { supabase } from './supabase'
+import { encerrarAnunciosDoVeiculo } from './api-anuncios'
+
+/** Encerra anúncios do veículo sem travar o fluxo de venda se a chamada falhar. */
+function encerrarAnunciosSemBloquear(veiculoId) {
+  encerrarAnunciosDoVeiculo(veiculoId).catch(e =>
+    console.error(`Falha ao encerrar anúncios do veículo ${veiculoId} após venda:`, e))
+}
 
 /* ── VEÍCULOS ───────────────────────────────────────────────────────────── */
 export async function getVeiculos() {
@@ -244,6 +251,7 @@ export async function concluirProcessoVenda({ processoId, processo, veiculo, dat
     })
     .eq('id', veiculo.id)
   if (e2) throw e2
+  encerrarAnunciosSemBloquear(veiculo.id)
 
   // 3. Veículo em troca → entra no estoque como "pendente"
   if (['troca','troca_financiado'].includes(processo.forma_pagamento) && processo.troca_placa) {
@@ -355,6 +363,7 @@ export async function registrarVenda({ veiculo_id, cliente, valor_venda, data_ve
       comprador_doc:  cliente.cpf_cnpj || null,
     })
     .eq('id', veiculo_id)
+  encerrarAnunciosSemBloquear(veiculo_id)
 
   const venda = await upsertVendaRelacao({
     veiculo_id,

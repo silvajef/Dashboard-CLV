@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useBreakpoint } from './lib/responsive'
 import { useAuth } from './hooks/useAuth'
 import { useLeads } from './hooks/useLeads'
+import { useAnuncios } from './hooks/useAnuncios'
 import { LoadingScreen, ErrorBanner } from './components/UI'
 import Sidebar from './components/Sidebar'
 import GlobalSearch from './components/GlobalSearch'
@@ -19,6 +20,8 @@ import KPIs        from './pages/KPIs'
 import Login       from './pages/Login'
 import Usuarios      from './pages/Usuarios'
 import Leads         from './pages/Leads'
+import Anuncios       from './pages/Anuncios'
+import Configuracoes  from './pages/Configuracoes'
 import Financeiro    from './pages/Financeiro'
 import PainelVendedor  from './pages/PainelVendedor'
 import EstoqueVendedor from './pages/EstoqueVendedor'
@@ -27,11 +30,13 @@ const TABS_BASE = [
   { id:'dashboard',   icon:'dashboard',  label:'KPIs'        },
   { id:'veiculos',    icon:'truck',      label:'Estoque'      },
   { id:'leads',       icon:'target',     label:'Leads'        },
+  { id:'anuncios',    icon:'megaphone',  label:'Anúncios'     },
   { id:'posvenda',    icon:'shield',     label:'Pós-Venda'    },
   { id:'prestadores', icon:'tools',      label:'Prestadores'  },
   { id:'historico',   icon:'list',       label:'Histórico'    },
   { id:'financeiro',  icon:'coins',      label:'Financeiro'   },
   { id:'comissoes',   icon:'users',      label:'Comissões'    },
+  { id:'configuracoes', icon:'settings', label:'Configurações' },
 ]
 
 // Tela exclusiva do perfil vendedor — única aba que ele enxerga.
@@ -69,8 +74,16 @@ export default function App() {
 function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile }) {
   const fleet = useFleet()
   const leadsHook = useLeads()
+  const anunciosHook = useAnuncios(session?.user?.id)
   const { leads } = leadsHook
   const jaCarregou = useRef(false)
+
+  // Retorno do OAuth de ML/OLX cai em "/" com ?code=&state= — processa uma
+  // vez ao montar, independente da aba atual (ver useAnuncios#processarCallbackOAuth).
+  useEffect(() => {
+    anunciosHook.processarCallbackOAuth()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id])
 
   // ── Todos os hooks ANTES de qualquer return condicional ──────────────────
   const [abrirVeiculoId,        setAbrirVeiculoId]        = useState(null)
@@ -205,6 +218,15 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
                                                    leads={leadsHook.leads} loading={leadsHook.loading} error={leadsHook.error}
                                                    saveLead={leadsHook.saveLead} removeLead={leadsHook.removeLead} moverLead={leadsHook.moverLead}
                                                    registrarAtividade={leadsHook.registrarAtividade} buscarAtividades={leadsHook.buscarAtividades}/>}
+        {abaAtual==='anuncios'    && <Anuncios     veiculos={fleet.veiculos}
+                                                   anuncios={anunciosHook.anuncios} statusIntegracoes={anunciosHook.statusIntegracoes}
+                                                   loading={anunciosHook.loading} error={anunciosHook.error}
+                                                   publicar={anunciosHook.publicar} pausar={anunciosHook.pausar} reativar={anunciosHook.reativar}
+                                                   anunciosDoVeiculo={anunciosHook.anunciosDoVeiculo}/>}
+        {abaAtual==='configuracoes' && <Configuracoes
+                                                   statusIntegracoes={anunciosHook.statusIntegracoes} loading={anunciosHook.loading} error={anunciosHook.error}
+                                                   conectar={anunciosHook.conectar} gerarFeedFacebook={anunciosHook.gerarFeedFacebook}
+                                                   confirmarFacebook={anunciosHook.confirmarFacebook} configurarLeadsOlx={anunciosHook.configurarLeadsOlx}/>}
         {abaAtual==='posvenda'    && <PosVenda     veiculos={fleet.veiculos} clientes={fleet.clientes} vendasRelacao={fleet.vendasRelacao}
                                                    saveVendaRelacao={fleet.saveVendaRelacao} saveCliente={fleet.saveCliente} removeCliente={fleet.removeCliente}
                                                    saveServico={fleet.saveServico} removeServico={fleet.removeServico} prestadores={fleet.prestadores}/>}
