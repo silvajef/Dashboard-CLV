@@ -53,6 +53,40 @@ export function parseFipeValor(str = '') {
   return parseFloat(str.replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0
 }
 
+/**
+ * Acha o item da lista FIPE pelo nome gravado no veículo, sem diferenciar
+ * caixa nem espaços nas pontas. Null se não houver correspondência.
+ * Ex.: acharPorNome([{ codigo:'21', nome:'Fiat' }], 'FIAT') → { codigo:'21', nome:'Fiat' }
+ */
+export function acharPorNome(lista, nome) {
+  const alvo = String(nome ?? '').trim().toLowerCase()
+  if (!alvo) return null
+  return lista.find(i => String(i.nome || '').trim().toLowerCase() === alvo) || null
+}
+
+/**
+ * Busca marca → modelos → anos a partir dos nomes salvos e para no primeiro
+ * nível que não casar (ex.: modelo renomeado na FIPE). Não busca preço.
+ */
+async function carregarCascata(ep, alvo) {
+  const vazio = { marca: null, modelo: null, ano: null, modelos: [], anos: [] }
+  const marca = acharPorNome((await get(`/${ep}/brands`)).map(normalizeItem), alvo.marca)
+  if (!marca) return vazio
+  const modelos = (await get(`/${ep}/brands/${marca.codigo}/models`)).map(normalizeItem)
+  const modelo  = acharPorNome(modelos, alvo.modelo)
+  if (!modelo) return { ...vazio, marca, modelos }
+  const anos = (await get(`/${ep}/brands/${marca.codigo}/models/${modelo.codigo}/years`)).map(normalizeItem)
+  return { marca, modelo, ano: acharPorNome(anos, alvo.ano), modelos, anos }
+}
+
+function selsDaCascata(c) {
+  return {
+    marcaCod:  c.marca?.codigo  || '', marcaNome:  c.marca?.nome  || '',
+    modeloCod: c.modelo?.codigo || '', modeloNome: c.modelo?.nome || '',
+    anoCod:    c.ano?.codigo    || '', anoNome:    c.ano?.nome    || '',
+  }
+}
+
 const INIT = { marcas: [], modelos: [], anos: [], preco: null }
 
 export function useFipe(tipoVeiculo) {
@@ -122,6 +156,23 @@ export function useFipe(tipoVeiculo) {
     finally { setLoading('') }
   }, [ep])
 
+  /**
+   * Repõe nos selects a marca/modelo/ano de um veículo já salvo — o banco só
+   * guarda os nomes, então sem isto a edição abria em "Selecione a marca".
+   * Não busca o preço: o valor_fipe gravado prevalece até o usuário trocar.
+   * Ex.: fipe.restaurarSelecao({ marca:'Fiat', modelo:'Ducato Cargo 2.3', ano:'2020 Diesel' })
+   */
+  const restaurarSelecao = useCallback(async (alvo) => {
+    setErro(null)
+    setLoading('seleção salva')
+    try {
+      const c = await carregarCascata(ep, alvo)
+      setState(p => ({ ...p, modelos: c.modelos, anos: c.anos, preco: null }))
+      setSels(selsDaCascata(c))
+    } catch(e) { setErro(e.message) }
+    finally { setLoading('') }
+  }, [ep])
+
   const reset = useCallback(() => {
     setState(p => ({ ...p, modelos:[], anos:[], preco:null }))
     setSels({ marcaCod:'', marcaNome:'', modeloCod:'', modeloNome:'', anoCod:'', anoNome:'' })
@@ -129,5 +180,5 @@ export function useFipe(tipoVeiculo) {
   }, [])
 
   return { ...state, ep, sels, loading, erro,
-           selecionarMarca, selecionarModelo, selecionarAno, reset }
+           selecionarMarca, selecionarModelo, selecionarAno, restaurarSelecao, reset }
 }

@@ -140,6 +140,22 @@ export async function saveMetas(metas) {
   return data
 }
 
+/** Cota mensal individual por vendedor (vendas_mes) — só admin escreve, ver RLS. */
+export async function getMetasVendedor() {
+  const { data, error } = await supabase.from('metas_vendedor').select('*')
+  if (error) throw error
+  return data || []
+}
+
+export async function saveMetaVendedor(vendedorId, vendasMes) {
+  const { data, error } = await supabase
+    .from('metas_vendedor')
+    .upsert({ vendedor_id: vendedorId, vendas_mes: vendasMes, updated_at: new Date().toISOString() }, { onConflict: 'vendedor_id' })
+    .select().single()
+  if (error) throw error
+  return data
+}
+
 /* ── CLIENTES (v3.7) ───────────────────────────────────────────────────── */
 export async function getClientes() {
   const { data, error } = await supabase

@@ -11,7 +11,7 @@
 1. **`leads` e `leads_atividades` já existem e estão em produção.** O funil
    (`src/pages/Leads.jsx` + `src/components/FunilLeads.jsx`) já tem Kanban,
    visão de funil e histórico de atividade por lead, com RLS aplicada
-   (`sql/20260708120000_rls_crm_role_policies.sql`). Este documento **estende**
+   (migration `rls_crm_role_policies` (histórico do Supabase)). Este documento **estende**
    o que existe — não recria do zero.
 2. **Não existe integração RENAVE neste repositório.** A spec original cita
    "mesmo padrão usado na integração RENAVE" como referência de abstração de
@@ -32,7 +32,7 @@
    foi ligado à UI (nenhum componente lê ou escreve nesse campo hoje).
    Round-robin deve operar sobre `profiles WHERE role='vendedor' AND ativo=true`.
 5. **A RLS atual é por papel, não por dono da linha.** O próprio cabeçalho de
-   `sql/20260708120000_rls_crm_role_policies.sql` declara: *"Dashboard-CLV é
+   migration `rls_crm_role_policies` (histórico do Supabase) declara: *"Dashboard-CLV é
    ferramenta interna de UMA loja com controle por papel (admin/operador/
    vendedor), NÃO multi-tenant por user_id."* Hoje qualquer usuário
    autenticado vê todos os leads; INSERT/UPDATE é liberado para
@@ -77,7 +77,7 @@ de aquisição.
 
 ### 2.1. `leads` — já existe, precisa de ALTER
 
-Schema atual (`sql/20260708140000_drop_anuncios_integracoes.sql` é a
+Schema atual (migration `drop_anuncios_integracoes` (histórico do Supabase) é a
 migration mais recente que a toca):
 
 ```
@@ -363,7 +363,7 @@ Log de auditoria em reatribuição/mudança de estágio: reaproveita
   `whatsapp_threads` é a única `CREATE TABLE` nova (seção 2.3). Migration
   nomeada `YYYYMMDDHHMMSS_crm_whatsapp.sql`, idempotente, via skill
   `nova-migracao` — seguindo exatamente o padrão de
-  `sql/20260708120000_rls_crm_role_policies.sql`.
+  migration `rls_crm_role_policies` (histórico do Supabase).
 - **RLS**: estender a policy já existente em `leads`/`leads_atividades`
   (`sql/20260708120000...`) para cobrir `whatsapp_threads` com o mesmo
   padrão por papel — e só migrar para RLS por dono se a decisão da seção 12

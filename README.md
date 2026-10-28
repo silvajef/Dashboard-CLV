@@ -9,7 +9,7 @@ Sistema de gestão de manutenção de estoque de veículos de carga.
 
 ### 1. Supabase — Criar projeto e banco
 1. Acesse [supabase.com](https://supabase.com) e crie um novo projeto
-2. Vá em **SQL Editor** e execute todo o conteúdo de `SUPABASE_SETUP.sql`
+2. O schema não vive em arquivos: está no projeto Supabase de produção (histórico em **Database → Migrations**). Para um ambiente novo, crie um branch no Supabase a partir dele — veja "Banco de dados" no `CLAUDE.md`
 3. Copie as credenciais em **Settings → API**:
    - `Project URL`
    - `anon public key`
@@ -74,7 +74,6 @@ fleetcontrol/
 │   │   └── Historico.jsx    # Log de serviços
 │   ├── App.jsx              # Roteamento principal
 │   └── main.jsx             # Entry point
-├── SUPABASE_SETUP.sql        # Schema do banco
 ├── vercel.json               # Config Vercel (SPA routing)
 ├── vite.config.js
 └── .env.example
