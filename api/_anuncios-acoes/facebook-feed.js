@@ -19,9 +19,9 @@
  * GET /api/anuncios-facebook-feed?token=...
  */
 import { timingSafeEqual } from 'crypto'
-import { admin } from './_supabaseAdmin.js'
-import { decrypt } from './_crypto.js'
-import { contextoIntegracao } from './_anuncios-contexto.js'
+import { admin } from '../_supabaseAdmin.js'
+import { decrypt } from '../_crypto.js'
+import { contextoIntegracao } from '../_anuncios-contexto.js'
 
 const STATUS_PUBLICAVEL = ['pronto', 'em_venda']
 

@@ -9,9 +9,9 @@
  * POST /api/anuncios-facebook-setup
  * Body: { acao: 'gerar_token' | 'confirmar_verificacao' }
  */
-import { guard, exigirPapel } from './_guard.js'
-import { encrypt } from './_crypto.js'
-import { contextoIntegracao } from './_anuncios-contexto.js'
+import { guard, exigirPapel } from '../_guard.js'
+import { encrypt } from '../_crypto.js'
+import { contextoIntegracao } from '../_anuncios-contexto.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })

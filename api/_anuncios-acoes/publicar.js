@@ -6,8 +6,8 @@
  * POST /api/anuncios-publicar
  * Body: { veiculo_id, plataforma: 'mercadolivre'|'olx', dados: { preco, fotos?, category_id?, listing_type_id?, atributos? } }
  */
-import { guard, exigirPapel } from './_guard.js'
-import { resolverAdaptador, carregarTokenValido, upsertAnuncioIdempotente } from './_anuncios.js'
+import { guard, exigirPapel } from '../_guard.js'
+import { resolverAdaptador, carregarTokenValido, upsertAnuncioIdempotente } from '../_anuncios.js'
 
 const STATUS_PUBLICAVEL = ['pronto', 'em_venda']
 

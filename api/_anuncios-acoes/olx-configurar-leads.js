@@ -8,9 +8,9 @@
  *
  * POST /api/anuncios-olx-configurar-leads
  */
-import { guard, exigirPapel } from './_guard.js'
-import { hashParaLookup } from './_crypto.js'
-import { carregarTokenValido } from './_anuncios.js'
+import { guard, exigirPapel } from '../_guard.js'
+import { hashParaLookup } from '../_crypto.js'
+import { carregarTokenValido } from '../_anuncios.js'
 
 const OLX_AUTOSERVICE = 'https://apps.olx.com.br/autoservice/v1'
 

@@ -23,7 +23,7 @@ function limparExpirados(agora) {
  * zera a cada cold start, suficiente para o volume interno de uma loja
  * única, não para API pública de alto tráfego. Compartilhado por guard()
  * (chave = userId) e por webhooks sem Bearer, que não têm userId pra usar
- * (ex.: api/anuncios-ml-webhook.js, chave = IP).
+ * (ex.: api/_anuncios-acoes/ml-webhook.js, chave = IP).
  * @returns {boolean} true se dentro do limite
  */
 export function dentroDoLimitePorChave(chave, limite = LIMITE_POR_JANELA) {

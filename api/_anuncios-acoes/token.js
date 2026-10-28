@@ -8,10 +8,10 @@
  * Body: { code, redirect_uri, plataforma: 'mercadolivre'|'olx' }
  * Response: { conectado: true, expires_at } — sem tokens.
  */
-import { guard, exigirPapel } from './_guard.js'
-import { encrypt } from './_crypto.js'
-import { contextoIntegracao } from './_anuncios-contexto.js'
-import { resolverAdaptador } from './_anuncios.js'
+import { guard, exigirPapel } from '../_guard.js'
+import { encrypt } from '../_crypto.js'
+import { contextoIntegracao } from '../_anuncios-contexto.js'
+import { resolverAdaptador } from '../_anuncios.js'
 
 const PLATAFORMAS_OAUTH = ['mercadolivre', 'olx']
 

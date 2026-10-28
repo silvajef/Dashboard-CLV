@@ -14,14 +14,14 @@
  * POST /api/anuncios-ml-webhook
  * Body (ML): { resource: "/questions/123", topic: "questions", ... }
  */
-import { admin } from './_supabaseAdmin.js'
-import { encrypt } from './_crypto.js'
-import { CONTEXTO_PII_LEAD } from './_pii-contexto.js'
-import { carregarIntegracaoQualquerUsuario } from './_anuncios.js'
-import { dentroDoLimitePorChave } from './_guard.js'
+import { admin } from '../_supabaseAdmin.js'
+import { encrypt } from '../_crypto.js'
+import { CONTEXTO_PII_LEAD } from '../_pii-contexto.js'
+import { carregarIntegracaoQualquerUsuario } from '../_anuncios.js'
+import { dentroDoLimitePorChave } from '../_guard.js'
 
 const LIMITE_POR_IP = 30
-import { buscarPergunta } from './_plataformas/mercadolivre.js'
+import { buscarPergunta } from '../_plataformas/mercadolivre.js'
 
 function sanitizarHeaders(headers) {
   const limpo = { ...headers }

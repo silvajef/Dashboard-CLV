@@ -9,9 +9,9 @@
  * POST /api/anuncios-status
  * Response: { mercadolivre: {...}, olx: {...}, facebook: {...} }
  */
-import { guard } from './_guard.js'
-import { decrypt } from './_crypto.js'
-import { contextoIntegracao } from './_anuncios-contexto.js'
+import { guard } from '../_guard.js'
+import { decrypt } from '../_crypto.js'
+import { contextoIntegracao } from '../_anuncios-contexto.js'
 
 const PLATAFORMAS = ['mercadolivre', 'olx', 'facebook']
 

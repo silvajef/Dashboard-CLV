@@ -11,8 +11,8 @@
  * plataforma não bloqueia as demais, fica registrada em
  * anuncios.erro_sincronizacao pra revisão manual.
  */
-import { guard, exigirPapel } from './_guard.js'
-import { encerrarAnunciosDoVeiculo } from './_anuncios.js'
+import { guard, exigirPapel } from '../_guard.js'
+import { encerrarAnunciosDoVeiculo } from '../_anuncios.js'
 
 function validar(body) {
   if (!body || typeof body !== 'object') return { erro: `body inválido: esperado objeto, recebi ${typeof body}` }

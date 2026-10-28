@@ -133,7 +133,7 @@ export function fecharAnuncio(accessToken, listingId) {
 
 /**
  * Busca uma pergunta específica do ML pelo id — usada pelo webhook de
- * notificação (api/anuncios-ml-webhook.js) para buscar o conteúdo real
+ * notificação (api/_anuncios-acoes/ml-webhook.js) para buscar o conteúdo real
  * em vez de confiar no corpo da notificação (ML não assina o webhook).
  * @param {string} accessToken
  * @param {string|number} questionId

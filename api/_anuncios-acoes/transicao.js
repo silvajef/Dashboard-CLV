@@ -8,8 +8,8 @@
  * POST /api/anuncios-transicao
  * Body: { anuncio_id, acao: 'pausar'|'reativar'|'fechar' }
  */
-import { guard, exigirPapel } from './_guard.js'
-import { resolverAdaptador, carregarTokenValido } from './_anuncios.js'
+import { guard, exigirPapel } from '../_guard.js'
+import { resolverAdaptador, carregarTokenValido } from '../_anuncios.js'
 
 const ACOES = {
   pausar:   { metodo: 'pausarAnuncio',   status: 'pausado'   },

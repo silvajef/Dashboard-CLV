@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/anuncios-:acao", "destination": "/api/anuncios?acao=:acao" },
     { "source": "/((?!api/).*)", "destination": "/" }
   ],
   "functions": {
