@@ -61,6 +61,21 @@ Ao adicionar uma nova aba:
 2. Importe e adicione em `TABS_BASE` dentro de `src/App.jsx`
 3. Adicione o case de renderização no bloco `{abaAtual===...}` do `<main>`
 
+## Banco de dados (Supabase)
+
+- **O banco é a fonte da verdade, não arquivos.** Não existe pasta de migrations
+  no repo e não se cria arquivo `.sql` (um hook bloqueia). Os antigos
+  `SUPABASE_MIGRATION_*.sql` e `sql/` divergiam do banco real e foram removidos
+  em 28/10/2026; continuam no histórico do git.
+- Toda mudança de schema, RLS ou função vai direto no projeto
+  `kicsrbhzgfhullgacszb` via MCP `apply_migration`, seguindo `/nova-migracao`
+  (inspecionar → SQL idempotente → checklist → aplicar → advisors).
+- O histórico fica em `supabase_migrations.schema_migrations`
+  (Database → Migrations no painel). O PR que depende da mudança cita o nome da
+  migration e se ela precisa ser aplicada antes do merge.
+- Ambiente novo ou teste destrutivo: branch do Supabase a partir de produção,
+  nunca rodar SQL experimental direto em produção.
+
 ## Structure
 
 - Follow the framework's convention (Rails, Django, Next.js, etc.).

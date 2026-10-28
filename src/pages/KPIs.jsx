@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react'
 import { Card, KPI, GaugeBar, SectionHead, Grid, Btn } from '../components/UI'
 import LineTracker from '../components/charts/LineTracker'
 import Icon from '../components/Icon'
-import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, custoFixos } from '../lib/constants'
+import { C, fmtR, fmtPct, fmtDias, fmtData, custoV, custoTotal, custoFixos, resultadoVendas, lucroBrutoVeiculo, fmtValorCompra } from '../lib/constants'
+import AvisoVendasIncompletas from '../components/AvisoVendasIncompletas'
 import { ALERTAS_CONFIG } from '../lib/alertas'
 import { relatorioVendas, relatorioKPI, abrirPDF } from '../lib/relatorios'
 
@@ -59,7 +60,7 @@ const chartTheme = {
   surface: C.card,
 }
 
-export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso, onIrParaEstoque }) {
+export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = [], onVerProcesso, onIrParaEstoque, onCorrigirVeiculo }) {
   const [periodo, setPeriodo] = useState('30')
   const [secao, setSecao]     = useState('overview')
   const [editMetas, setEdit]  = useState(false)
@@ -104,13 +105,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const taxaGiro     = todos.length > 0 ? (vendidos.length/todos.length)*100 : 0
 
     const receita      = vendidos.reduce((s,v)=>s+(v.valor_venda||0),0)
-    const custoAquis   = vendidos.reduce((s,v)=>s+(v.valor_compra||0),0)
-    const custoMntVend = vendidos.reduce((s,v)=>s+custoV(v),0)
-    const custoFxVend  = vendidos.reduce((s,v)=>s+custoFixos(v),0)
-    const lucro        = receita - custoAquis - custoMntVend - custoFxVend
-    const margem       = receita > 0 ? (lucro/receita)*100 : 0
+    // Lucro, margem e ROI só sobre vendas com custo de aquisição: as sem ele
+    // entravam com lucro = valor de venda inteiro (ver resultadoVendas).
+    const rv           = resultadoVendas(vendidos)
+    const { aquisicao: custoAquis, manutencao: custoMntVend, fixos: custoFxVend, lucro, margem, roi } = rv
     const ticketMedio  = vendidos.length > 0 ? receita/vendidos.length : 0
-    const roi          = custoAquis > 0 ? (lucro/custoAquis)*100 : 0
 
     const custoMntTotal  = todos.reduce((s,v)=>s+custoV(v),0)
     const custoMntAtivos = ativos.reduce((s,v)=>s+custoV(v),0)
@@ -122,12 +121,10 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
     const porTipo = tipos.map(tipo => {
       const vt = todos.filter(v=>v.tipo===tipo)
       const vv = vt.filter(v=>v.status==='vendido')
-      const lucroT = vv.reduce((s,v)=>{const c=custoV(v)+custoFixos(v);return s+(v.valor_venda||0)-(v.valor_compra||0)-c},0)
-      const recT   = vv.reduce((s,v)=>s+(v.valor_venda||0),0)
-      const margemT= recT>0?(lucroT/recT)*100:0
+      const rt     = resultadoVendas(vv)
       const diasT  = vt.map(v=>diasEstoque(v))
       const mediaDT= diasT.length?diasT.reduce((a,b)=>a+b,0)/diasT.length:0
-      return { tipo, qtd:vt.length, vendidos:vv.length, lucro:lucroT, margem:margemT, mediaDias:mediaDT, custo:vt.reduce((s,v)=>s+custoV(v),0) }
+      return { tipo, qtd:vt.length, vendidos:vv.length, lucro:rt.lucro, margem:rt.margem, mediaDias:mediaDT, custo:vt.reduce((s,v)=>s+custoV(v),0) }
     })
 
     const mesesMap = {}
@@ -135,14 +132,14 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
       const m = mesAno(v.data_venda)
       if (!mesesMap[m]) mesesMap[m]={mes:m,qtd:0,receita:0,lucro:0}
       mesesMap[m].qtd++; mesesMap[m].receita+=v.valor_venda||0
-      mesesMap[m].lucro+=(v.valor_venda||0)-(v.valor_compra||0)-custoV(v)-custoFixos(v)
+      mesesMap[m].lucro+=lucroBrutoVeiculo(v) ?? 0
     })
     const mesesVenda = Object.values(mesesMap).sort((a,b)=>a.mes.localeCompare(b.mes))
 
     const rankingCusto = ativos.map(v=>({...v,_dias:diasEstoque(v),custoTotal:custoV(v),pctCusto:v.valor_compra>0?(custoV(v)/v.valor_compra)*100:0})).sort((a,b)=>b.pctCusto-a.pctCusto)
     const rankingDias  = [...ativos].sort((a,b)=>diasEstoque(b)-diasEstoque(a))
 
-    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, paradosAtencao, paradosCritico, taxaGiro, receita, custoAquis, custoMntVend, custoFxVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
+    return { todos, ativos, vendidos, mediaDiasAti, mediaDiasVend, paradosAtencao, paradosCritico, taxaGiro, receita, rv, custoAquis, custoMntVend, custoFxVend, lucro, margem, ticketMedio, roi, custoMntTotal, custoMntAtivos, valorEstTotal, indiceCusto, custoMedioV, porTipo, mesesVenda, rankingCusto, rankingDias }
   }, [vPeriodo])
 
   const mesAtual = useMemo(()=>{
@@ -339,13 +336,15 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
             ))}
           </div>
 
+          <AvisoVendasIncompletas rv={calc.rv} onCorrigir={onCorrigirVeiculo}/>
+
           {/* Hero cards — 4 clickable drilldown panels */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:28}}>
             {[
               {label:'Valor em Estoque', value:fmtR(calc.valorEstTotal),  color:C.blue,  sub:'custo de aquisição ativo',              key:'estoque'   },
               {label:'Custo Manutenção', value:fmtR(calc.custoMntAtivos), color:C.amber, sub:`índice: ${fmtPct(calc.indiceCusto)}`,   key:'manutencao'},
               {label:'Receita Vendas',   value:fmtR(calc.receita),        color:C.green, sub:`${calc.vendidos.length} vendas no período`, key:'receita'},
-              {label:'Lucro Líquido',    value:fmtR(calc.lucro),          color:calc.lucro>=0?C.green:C.red, sub:`margem: ${fmtPct(calc.margem)}`, key:'lucro'},
+              {label:'Lucro Bruto',      value:fmtR(calc.lucro),          color:calc.lucro>=0?C.green:C.red, sub:`margem: ${fmtPct(calc.margem)} · ${calc.rv.consideradas} de ${calc.vendidos.length} vendas`, key:'lucro'},
             ].map((k,i)=>(
               <div key={k.label} onClick={()=>setDrilldown(k.key)} className="kpi-hero"
                 style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:'18px 20px 16px',cursor:'pointer',position:'relative',overflow:'hidden',animation:`kpi-in 0.3s ease ${i*0.07}s both`}}
@@ -497,11 +496,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
         <div>
           <Grid cols={3} gap={12} style={{marginBottom:24}}>
             {[
-              {label:'Receita Total',   value:fmtR(calc.receita),       color:C.blue},
+              {label:'Receita Considerada', value:fmtR(calc.rv.receita), color:C.blue},
               {label:'Custo Aquisição', value:fmtR(calc.custoAquis),    color:C.muted},
               {label:'Custo Manutenção',value:fmtR(calc.custoMntVend),  color:C.amber},
               {label:'Custos Fixos',    value:fmtR(calc.custoFxVend),   color:C.orange},
-              {label:'Lucro Líquido',   value:fmtR(calc.lucro),         color:calc.lucro>=0?C.green:C.red},
+              {label:'Lucro Bruto',     value:fmtR(calc.lucro),         color:calc.lucro>=0?C.green:C.red},
               {label:'Margem Bruta',    value:fmtPct(calc.margem),      color:calc.margem>=(metas.margem_min||8)?C.green:C.red},
             ].map(k=>(
               <div key={k.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:'16px 18px',borderTop:`2px solid ${k.color}`}}>
@@ -514,7 +513,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
             <Card>
               <SectionHead title="Composição do Resultado"/>
               {[
-                {label:'Receita',            value:calc.receita,      positive:true,  color:C.green},
+                {label:'Receita',            value:calc.rv.receita,   positive:true,  color:C.green},
                 {label:'(-) Custo Aquis.',   value:-calc.custoAquis,  positive:false, color:C.red},
                 {label:'(-) Custo Mnt.',     value:-calc.custoMntVend,positive:false, color:C.amber},
                 ...(calc.custoFxVend > 0 ? [{label:'(-) Custos Fixos', value:-calc.custoFxVend, positive:false, color:C.orange}] : []),
@@ -525,7 +524,7 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                     <span style={{fontSize:13,fontWeight:r.bold?800:500,color:r.bold?C.text:C.muted}}>{r.label}</span>
                     <span style={{...mono,fontSize:13,fontWeight:700,color:r.color}}>{fmtR(Math.abs(r.value))}</span>
                   </div>
-                  <GaugeBar value={Math.abs(r.value)} max={Math.max(calc.receita,1)} color={r.color} height={r.bold?8:5}/>
+                  <GaugeBar value={Math.abs(r.value)} max={Math.max(calc.rv.receita,1)} color={r.color} height={r.bold?8:5}/>
                 </div>
               ))}
               <Grid cols={2} gap={10} style={{marginTop:16}}>
@@ -568,9 +567,9 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
               </thead>
               <tbody>
                 {calc.vendidos.map(v=>{
-                  const mnt=custoV(v); const fx=custoFixos(v); const lucro=(v.valor_venda||0)-(v.valor_compra||0)-mnt-fx
-                  const mg=v.valor_venda>0?(lucro/v.valor_venda)*100:0
-                  const cor=mg>=10?C.green:mg>=5?C.amber:C.red
+                  const mnt=custoV(v); const lucro=lucroBrutoVeiculo(v)
+                  const mg=lucro!=null&&v.valor_venda>0?(lucro/v.valor_venda)*100:null
+                  const cor=mg==null?C.faint:mg>=10?C.green:mg>=5?C.amber:C.red
                   return(
                     <tr key={v.id}
                       onClick={() => onVerProcesso?.(v.id)}
@@ -579,11 +578,11 @@ export default function KPIs({ veiculos, metas: metasDB, saveMetas, processos = 
                       style={{borderBottom:`1px solid ${C.border}`,cursor:'pointer'}}>
                       <td style={{padding:'9px 10px',fontWeight:700}}>{v.modelo}</td>
                       <td style={{padding:'9px 10px',color:C.muted,...mono}}>{v.placa}</td>
-                      {[fmtR(v.valor_compra),fmtR(mnt),fmtR(v.valor_venda)].map((val,i)=>(
+                      {[fmtValorCompra(v),fmtR(mnt),fmtR(v.valor_venda)].map((val,i)=>(
                         <td key={i} style={{padding:'9px 10px',textAlign:'right',...mono}}>{val}</td>
                       ))}
-                      <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtR(lucro)}</td>
-                      <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{fmtPct(mg)}</td>
+                      <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{lucro==null?'—':fmtR(lucro)}</td>
+                      <td style={{padding:'9px 10px',textAlign:'right',...mono,fontWeight:700,color:cor}}>{mg==null?'—':fmtPct(mg)}</td>
                       <td style={{padding:'9px 10px',textAlign:'right',...mono}}>{fmtDias(diasEstoque(v))}</td>
                       <td style={{padding:'9px 8px',textAlign:'center',color:C.faint,fontSize:14}}>›</td>
                     </tr>
@@ -925,7 +924,7 @@ function DrilldownModal({ tipo, calc, periodo, onClose, onNavegar }) {
       row: v => {
         const mnt=custoV(v); const fx=custoFixos(v)
         const ct=(v.valor_compra||0)+mnt+fx
-        const luc=(v.valor_venda||0)-ct
+        const luc=lucroBrutoVeiculo(v)
         const dvISO = normDate(v.data_venda)
         const dvDisplay = dvISO ? dvISO.split('-').reverse().join('/') : (v.data_venda||'—')
         return [
@@ -935,7 +934,7 @@ function DrilldownModal({ tipo, calc, periodo, onClose, onNavegar }) {
           v.comprador_nome||'—',
           fmtR(v.valor_venda||0),
           fmtR(ct),
-          fmtR(luc),
+          luc==null ? '—' : fmtR(luc),
         ]
       },
       totais: [
@@ -945,32 +944,29 @@ function DrilldownModal({ tipo, calc, periodo, onClose, onNavegar }) {
       ],
     },
     lucro: {
-      titulo:  'Lucro Líquido',
+      titulo:  'Lucro Bruto',
       icon:    '📈',
       color:   calc.lucro >= 0 ? C.green : C.red,
-      lista:   [...calc.vendidos].sort((a,b)=>{
-        const la=(a.valor_venda||0)-(a.valor_compra||0)-custoV(a)-custoFixos(a)
-        const lb=(b.valor_venda||0)-(b.valor_compra||0)-custoV(b)-custoFixos(b)
-        return lb-la
-      }),
+      // Vendas sem custo de aquisição vão pro fim da lista, sem lucro calculado.
+      lista:   [...calc.vendidos].sort((a,b)=>(lucroBrutoVeiculo(b) ?? -Infinity)-(lucroBrutoVeiculo(a) ?? -Infinity)),
       colunas: ['Veículo','Placa','Receita','Custo Aquis.','Manutenção','Fixos','Lucro','Margem'],
       row: v => {
         const mnt=custoV(v); const fx=custoFixos(v)
-        const luc=(v.valor_venda||0)-(v.valor_compra||0)-mnt-fx
-        const mg=v.valor_venda>0?(luc/v.valor_venda)*100:0
+        const luc=lucroBrutoVeiculo(v)
+        const mg=luc!=null&&v.valor_venda>0?(luc/v.valor_venda)*100:null
         return [
           `${v.marca_nome||''} ${v.modelo_nome||v.modelo||''}`.trim()||'—',
           v.placa||'—',
           fmtR(v.valor_venda||0),
-          fmtR(v.valor_compra||0),
+          fmtValorCompra(v),
           fmtR(mnt),
           fmtR(fx),
-          fmtR(luc),
-          `${mg.toFixed(1)}%`,
+          luc==null ? '—' : fmtR(luc),
+          mg==null ? '—' : `${mg.toFixed(1)}%`,
         ]
       },
       totais: [
-        ['Receita',     fmtR(calc.receita),                         C.blue  ],
+        ['Receita',     fmtR(calc.rv.receita),                      C.blue  ],
         ['Lucro Total', fmtR(calc.lucro),                           calc.lucro>=0?C.green:C.red],
         ['Margem',      `${calc.margem.toFixed(1)}%`,               C.cyan  ],
       ],
@@ -1031,13 +1027,10 @@ function DrilldownModal({ tipo, calc, periodo, onClose, onNavegar }) {
                         style={{borderBottom:`1px solid ${C.border}`,background:bgBase,cursor:'pointer'}}>
                         {cells.map((cell,ci)=>{
                           let color = C.text
-                          if (isLucro && ci >= 6) {
+                          if ((isLucro && ci >= 6) || (isReceita && ci === 6)) {
                             const raw = parseFloat(String(cell).replace(/[^0-9,.-]/g,'').replace(',','.'))
-                            color = !isNaN(raw) && raw < 0 ? C.red : C.green
-                          }
-                          if (isReceita && ci === 6) {
-                            const raw = parseFloat(String(cell).replace(/[^0-9,.-]/g,'').replace(',','.'))
-                            color = !isNaN(raw) && raw < 0 ? C.red : C.green
+                            // '—' = venda sem custo de aquisição: neutro, não "lucro verde".
+                            color = isNaN(raw) ? C.faint : raw < 0 ? C.red : C.green
                           }
                           return (
                             <td key={ci} style={{padding:'9px 12px',textAlign:ci<2?'left':'right',...(ci>=2?mono:{}),fontWeight:ci>=2?600:400,color,whiteSpace:'nowrap'}}>

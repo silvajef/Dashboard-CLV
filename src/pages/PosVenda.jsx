@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { C, fmtR, custoV, custoFixos, fmtData } from '../lib/constants'
+import { C, fmtR, fmtData, resultadoVendas, lucroBrutoVeiculo, fmtValorCompra } from '../lib/constants'
+import AvisoVendasIncompletas from '../components/AvisoVendasIncompletas'
 import { KPI, Grid, Modal, Btn } from '../components/UI'
 import { MoedaInput, UpperInput, DocInput, DateInput, SelectInput } from '../components/Inputs'
 import { useAuth } from '../hooks/useAuth'
@@ -27,6 +28,7 @@ export default function PosVenda({
   saveServico,
   removeServico,
   prestadores = [],
+  onCorrigirVeiculo,
 }) {
   const [sub, setSub] = useState('vendas')
 
@@ -77,12 +79,16 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao, saveServico, re
     (a, b) => new Date(b.data_venda) - new Date(a.data_venda)
   )
 
+  // O valor de venda da relação prevalece sobre o do veículo (pode ter sido
+  // ajustado no pós-venda). Vendas sem custo de aquisição ficam fora do lucro.
+  const veiculosVendidos = vendasOrdenadas
+    .map(vr => {
+      const ve = vr.veiculo || veiculos.find(x => x.id === vr.veiculo_id)
+      return ve ? { ...ve, valor_venda: vr.valor_venda } : null
+    })
+    .filter(Boolean)
   const receita = vendasOrdenadas.reduce((s, v) => s + (v.valor_venda || 0), 0)
-  const custos  = vendasOrdenadas.reduce((s, v) => {
-    const ve = v.veiculo || veiculos.find(x => x.id === v.veiculo_id)
-    return s + (ve?.valor_compra || ve?.valor_estoque || 0) + custoV(ve) + custoFixos(ve)
-  }, 0)
-  const lucro = receita - custos
+  const rv      = resultadoVendas(veiculosVendidos)
 
   if (detalhe) {
     return (
@@ -100,22 +106,20 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao, saveServico, re
 
   return (
     <div>
+      <AvisoVendasIncompletas rv={rv} onCorrigir={onCorrigirVeiculo} />
       <Grid cols={4} gap={14} style={{ marginBottom: 24 }}>
         <KPI label="Total Vendas"  value={vendasOrdenadas.length} icon="🏷" color="#a78bfa" />
         <KPI label="Receita Total" value={fmtR(receita)}          icon="💵" color={C.green} />
-        <KPI label="Custo Total"   value={fmtR(custos)}           icon="📉" color={C.red} />
-        <KPI label="Lucro Líquido" value={fmtR(lucro)}            icon="📈" color={C.amber} />
+        <KPI label="Custo (c/ compra)" value={fmtR(rv.custo)}     icon="📉" color={C.red} />
+        <KPI label="Lucro Bruto"   value={fmtR(rv.lucro)}         icon="📈" color={C.amber} />
       </Grid>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {vendasOrdenadas.map(vr => {
           const v   = vr.veiculo || veiculos.find(x => x.id === vr.veiculo_id)
           if (!v) return null
-          const mnt  = custoV(v)
-          const cfx  = custoFixos(v)
-          const comp = v.valor_compra || v.valor_estoque || 0
-          const l    = (vr.valor_venda || 0) - comp - mnt - cfx
-          const corL = l >= 0 ? C.green : C.red
+          const l    = lucroBrutoVeiculo({ ...v, valor_venda: vr.valor_venda })
+          const corL = l == null ? C.faint : l >= 0 ? C.green : C.red
           const cli  = vr.cliente
 
           return (
@@ -145,9 +149,9 @@ function Vendas({ veiculos, vendasComGarantia, saveVendaRelacao, saveServico, re
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, textAlign: 'center' }}>
                     {[
-                      ['Compra', fmtR(comp),          C.muted],
+                      ['Compra', fmtValorCompra(v),    C.muted],
                       ['Venda',  fmtR(vr.valor_venda), C.green],
-                      ['Lucro',  fmtR(l),              corL],
+                      ['Lucro',  l == null ? '—' : fmtR(l), corL],
                     ].map(([lb, val, c]) => (
                       <div key={lb}>
                         <div style={{ fontSize: 10, color: C.muted, fontWeight: 700 }}>{lb}</div>
