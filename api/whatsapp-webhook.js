@@ -124,10 +124,19 @@ async function localizarOuCriarThread(lead, msg) {
   return nova
 }
 
+/**
+ * Só o necessário pra idempotência/auditoria — número, nome de perfil e texto
+ * ficavam em claro aqui, driblando a cifra de leads.*_encrypted (mesmo
+ * achado do olx-webhook, 2026-08-31; corrigido aqui em 2026-10-26).
+ */
+function redigirMensagem(msg) {
+  return { externalId: msg.externalId, timestamp: msg.timestamp, redigido: true }
+}
+
 /** Grava o evento bruto pra idempotência. Retorna false se já foi visto (entrega repetida da Meta). */
 async function registrarEventoBruto(msg, headers) {
   const { error } = await admin.from('raw_webhook_events').insert({
-    provider: 'whatsapp', payload: msg, headers: sanitizarHeaders(headers), external_id: msg.externalId,
+    provider: 'whatsapp', payload: redigirMensagem(msg), headers: sanitizarHeaders(headers), external_id: msg.externalId,
   })
   if (!error) return true
   if (error.code === '23505') return false // já processado — índice único (provider, external_id)
