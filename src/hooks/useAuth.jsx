@@ -85,8 +85,8 @@ export function AuthProvider({ children }) {
         sessaoSalva.access_token
       )
 
-      if (!perfilCarregado) {
-        // Token rejeitado pelo servidor — limpa e vai para login
+      if (!perfilCarregado || perfilCarregado.ativo === false) {
+        // Token rejeitado pelo servidor ou usuário desativado — limpa e vai para login
         limparToken()
         setSession(null)
         setLoading(false)
@@ -110,11 +110,21 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN') {
-          setSession(session)
-          if (session?.user?.id) {
-            const p = await carregarPerfilViaFetch(session.user.id, session.access_token)
-            setPerfil(p)
+          const p = session?.user?.id
+            ? await carregarPerfilViaFetch(session.user.id, session.access_token)
+            : null
+          // Inativo não entra — o ban no Auth já barra o login, isto cobre
+          // quem foi desativado sem ban (antes de api/usuarios.js existir).
+          if (p?.ativo === false) {
+            limparToken()
+            await supabase.auth.signOut().catch(() => {})
+            setSession(null)
+            setPerfil(null)
+            setLoading(false)
+            return
           }
+          setSession(session)
+          setPerfil(p)
           setLoading(false)
           return
         }

@@ -5,6 +5,7 @@
  * gravar, nunca envia texto claro pro banco.
  */
 import { supabase } from './supabase'
+import { chamarApiAutenticada } from './apiCliente'
 
 /* ── PII: cifra/decifra via api/leads-pii-*.js (chave fica só no servidor) */
 
@@ -14,18 +15,6 @@ const CAMPOS_PII = [
   ['telefone_encrypted', 'telefone'],
   ['email_encrypted', 'email'],
 ]
-
-async function chamarApiAutenticada(rota, body) {
-  const { data: sessao } = await supabase.auth.getSession()
-  const token = sessao?.session?.access_token
-  const res = await fetch(`/api/${rota}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`Falha em /api/${rota}: HTTP ${res.status}`)
-  return res.json()
-}
 
 async function revelarLote(itens) {
   const valores = []

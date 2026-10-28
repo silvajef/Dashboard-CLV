@@ -24,7 +24,7 @@ if (!URL || !ANON_KEY) {
   process.exit(1)
 }
 
-const TABELAS_RLS = ['leads', 'anuncios', 'leads_atividades', 'veiculos', 'clientes']
+const TABELAS_RLS = ['leads', 'anuncios', 'leads_atividades', 'veiculos', 'clientes', 'profiles', 'raw_webhook_events']
 const falhas = []
 
 function checar(condicao, mensagem) {
@@ -63,6 +63,21 @@ async function vendedorRespeitaPapeis(email, senha) {
     const { error: erroDelete } = await cli.from('leads').delete().eq('id', criado.id)
     checar(erroDelete != null, 'vendedor NÃO apaga lead (só admin)')
   }
+
+  await vendedorNaoEscalaPapel(cli)
+}
+
+/**
+ * Regressão da migration 20261026120000: profiles_update_self não restringia
+ * colunas, e o vendedor conseguia se promover a admin pela API REST.
+ */
+async function vendedorNaoEscalaPapel(cli) {
+  const { data: { user } } = await cli.auth.getUser()
+  const { error: erroRole } = await cli.from('profiles').update({ role: 'admin' }).eq('id', user.id)
+  checar(erroRole != null, 'vendedor NÃO se promove a admin (trigger proteger_papel_profiles)')
+
+  const { data: eventos } = await cli.from('raw_webhook_events').select('id').limit(1)
+  checar(!eventos?.length, 'vendedor NÃO lê raw_webhook_events (só service-role)')
 }
 
 async function main() {
