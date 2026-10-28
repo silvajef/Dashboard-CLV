@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { chamarApiAutenticada } from '../lib/apiCliente'
 
 const C = {
   bg:      '#0f1117',
@@ -73,14 +74,14 @@ export default function Usuarios() {
     setLoading(false)
   }
 
+  // Criação e (des)ativação passam pelo servidor (api/usuarios.js): signUp
+  // no browser deixava o papel vir do metadata do cliente, e desativar
+  // precisa banir no Auth, o que exige service-role.
   async function criarUsuario({ email, senha, nome, role }) {
-    const { data, error } = await supabase.auth.signUp({
-      email, password: senha,
-      options: { data: { nome, role } },
-    })
-    if (error) return { error: error.message }
-    if (data.user) {
-      await supabase.from('profiles').upsert({ id: data.user.id, nome, role, ativo: true })
+    try {
+      await chamarApiAutenticada('usuarios', { acao: 'criar', email, senha, nome, role })
+    } catch (e) {
+      return { error: e.message }
     }
     await carregarUsuarios()
     return { ok: true }
@@ -93,7 +94,13 @@ export default function Usuarios() {
   }
 
   async function toggleAtivo(u) {
-    await atualizarPerfil(u.id, { ativo: !u.ativo })
+    try {
+      await chamarApiAutenticada('usuarios', { acao: 'definir_ativo', id: u.id, ativo: !u.ativo })
+    } catch (e) {
+      exibirToast(`⚠️ ${e.message}`)
+      return
+    }
+    await carregarUsuarios()
     exibirToast(u.ativo ? '⏸ Usuário desativado' : '▶️ Usuário reativado')
   }
 
