@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Badge, Btn, Card, Tabs, Grid, SectionHead, ErrorBanner } from '../components/UI'
 import { ModalVeiculo, ModalServico, ModalConfirm } from '../components/Modals'
 import { ModalIniciarVenda, EtapasProcesso } from '../components/ProcessoVenda'
-import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, custoTotal, diasNoEstoque, getCf, progressoProcesso } from '../lib/constants'
+import { C, STATUS_VEICULO_CFG, STATUS_SERV_CFG, fmtR, fmtN, custoV, custoFixos, custoTotal, calcPrecoSugerido, fmtValorCompra, diasNoEstoque, getCf, progressoProcesso } from '../lib/constants'
 import { ALERTAS_CONFIG } from '../lib/alertas'
 import { useBreakpoint } from '../lib/responsive'
 import { fichaVeiculo, relatorioEstoque, abrirPDF } from '../lib/relatorios'
@@ -107,6 +107,7 @@ export default function Veiculos({
   saveServico, removeServico,
   saveProcesso, concluirProcesso, cancelarProcesso,
   abrirVeiculoId, onAbrirVeiculoHandled,
+  editarVeiculoId, onEditarVeiculoHandled,
   filtroInicial, onFiltroInicialHandled,
   focusBusca, onFocusBuscaHandled,
 }) {
@@ -125,6 +126,15 @@ export default function Veiculos({
     const v = veiculos.find(x => x.id === abrirVeiculoId)
     if (v) { setVSel(v); setVTab('processo'); onAbrirVeiculoHandled?.() }
   }, [abrirVeiculoId, veiculos])
+
+  // Vindo dos avisos de venda sem valor de compra: ficha + modal de edição
+  // abertos direto (inclui vendidos, que não aparecem na lista do estoque).
+  useEffect(() => {
+    if (!editarVeiculoId || !veiculos.length) return
+    const v = veiculos.find(x => x.id === editarVeiculoId)
+    if (v) { setVSel(v); setVTab('info'); setModal({ type:'veiculo', data:v }) }
+    onEditarVeiculoHandled?.()
+  }, [editarVeiculoId, veiculos])
 
   useEffect(() => {
     if (!filtroInicial) return
@@ -178,9 +188,7 @@ export default function Veiculos({
   /* ─────────────────────────── DETALHE ──────────────────────────── */
   if (vAtual) {
     const cfgV = STATUS_VEICULO_CFG[vAtual.status] || { color: C.muted, label: vAtual.status }
-    const precoSugerido = (metas?.margem_min > 0 && vAtual.status !== 'vendido')
-      ? Math.round(custoTotal(vAtual) * (1 + metas.margem_min / 100))
-      : null
+    const precoSugerido = calcPrecoSugerido(vAtual, metas?.margem_min)
     const tabs = [
       ...(procAtual ? [{ id:'processo', icon:'🏷', label:'Processo de Venda' }] : []),
       { id:'info',       icon:'📄', label:'Informações' },
@@ -335,7 +343,7 @@ export default function Veiculos({
                 <SectionHead title="Valores"/>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
                   {[
-                    ['VALOR DE COMPRA',  fmtR(vAtual.valor_compra),                                      C.amber],
+                    ['VALOR DE COMPRA',  fmtValorCompra(vAtual),                                         C.amber],
                     ['VALOR DE ANÚNCIO', vAtual.valor_anuncio ? fmtR(vAtual.valor_anuncio) : '—',        C.orange],
                     ['TABELA FIPE',      vAtual.valor_fipe    ? fmtR(vAtual.valor_fipe)    : '—',        C.green],
                     ...(precoSugerido ? [['PREÇO SUGERIDO',  fmtR(precoSugerido),                        C.cyan]] : []),
