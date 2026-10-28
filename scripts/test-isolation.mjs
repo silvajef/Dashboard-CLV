@@ -2,7 +2,7 @@
  * Gate de segurança RLS — Dashboard-CLV (loja única, controle por papel).
  *
  * NÃO é teste multi-tenant (o app não isola por user_id — ver
- * sql/20260708120000_rls_crm_role_policies.sql). Verifica duas coisas:
+ * migration rls_crm_role_policies no histórico do Supabase). Verifica duas coisas:
  *   1. anon não lê NADA das tabelas com RLS (fronteira contra visitante).
  *   2. vendedor respeita os papéis: pode criar lead, NÃO pode criar anúncio
  *      nem apagar lead (só admin apaga).
