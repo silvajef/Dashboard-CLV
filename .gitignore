@@ -4,3 +4,6 @@ dist
 .env.local
 .env*.local
 .vercel
+
+# Banco vive no Supabase (apply_migration), não em arquivos — ver CLAUDE.md
+*.sql
