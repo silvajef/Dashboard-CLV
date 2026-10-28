@@ -211,7 +211,7 @@ function AppAutenticado({ session, perfil, role, signOut, aba, setAba, isMobile 
         {abaAtual==='prestadores' && <Prestadores  prestadores={fleet.prestadores} veiculos={fleet.veiculos} savePrestador={fleet.savePrestador} removePrestador={fleet.removePrestador}/>}
         {abaAtual==='historico'   && <Historico    veiculos={fleet.veiculos} prestadores={fleet.prestadores}/>}
         {abaAtual==='financeiro'    && <Financeiro   veiculos={fleet.veiculos} metas={fleet.metas}/>}
-        {abaAtual==='comissoes'     && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil}/>}
+        {abaAtual==='comissoes'     && <PainelVendedor veiculos={fleet.veiculos} metas={fleet.metas} perfil={perfil} role={role}/>}
         {abaAtual==='estoque-vendedor' && <EstoqueVendedor veiculos={fleet.veiculos}/>}
         {abaAtual==='usuarios'      && <Usuarios />}
         </div>
